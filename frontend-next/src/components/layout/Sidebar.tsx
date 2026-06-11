@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Bot,
@@ -121,9 +122,18 @@ function GroupLabel({ label, collapsed }: { label: string; collapsed: boolean })
   );
 }
 
+function getInitials(name: string | null | undefined): string {
+  if (!name) return "?";
+  const parts = name.trim().split(/\s+/);
+  return parts.length === 1
+    ? parts[0].slice(0, 2).toUpperCase()
+    : (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
 export function Sidebar() {
   const { collapsed, toggle, mounted } = useSidebar();
   const shouldReduceMotion = useReducedMotion();
+  const { data: session } = useSession();
 
   if (!mounted) return null;
 
@@ -194,18 +204,18 @@ export function Sidebar() {
         </nav>
 
         {/* ── User area ────────────────────────────────────────────── */}
-        {!collapsed && (
+        {!collapsed && session?.user && (
           <div className="shrink-0 border-t border-sidebar-border px-3.5 py-2.5 sidebar-profile">
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-primary text-xs font-bold text-white">
-                HK
+                {getInitials(session.user.name)}
               </div>
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-sidebar-foreground truncate leading-none">
-                  Hitesh K
+                  {session.user.name ?? "Unknown"}
                 </p>
                 <p className="text-[10px] text-primary truncate mt-0.5">
-                  hiteshkgowda56@gmail.com
+                  {session.user.email ?? ""}
                 </p>
               </div>
             </div>

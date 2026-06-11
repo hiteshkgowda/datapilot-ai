@@ -415,13 +415,25 @@ class FallbackAgentPlanner:
     async def generate_plan(self, *args: Any, **kwargs: Any) -> dict[str, Any]:
         try:
             return await self._primary.generate_plan(*args, **kwargs)
-        except LLMError as exc:
-            logger.warning("Primary agent planner failed (%s); trying secondary.", exc)
-            return await self._secondary.generate_plan(*args, **kwargs)
+        except LLMError as primary_exc:
+            logger.warning("Primary agent planner failed (%s); trying secondary.", primary_exc)
+            try:
+                return await self._secondary.generate_plan(*args, **kwargs)
+            except LLMError as secondary_exc:
+                raise LLMError(
+                    f"Both LLM providers failed. "
+                    f"Primary: {primary_exc}. Secondary: {secondary_exc}"
+                ) from secondary_exc
 
     async def replan(self, *args: Any, **kwargs: Any) -> list[dict[str, Any]]:
         try:
             return await self._primary.replan(*args, **kwargs)
-        except LLMError as exc:
-            logger.warning("Primary agent re-planner failed (%s); trying secondary.", exc)
-            return await self._secondary.replan(*args, **kwargs)
+        except LLMError as primary_exc:
+            logger.warning("Primary agent re-planner failed (%s); trying secondary.", primary_exc)
+            try:
+                return await self._secondary.replan(*args, **kwargs)
+            except LLMError as secondary_exc:
+                raise LLMError(
+                    f"Both LLM providers failed. "
+                    f"Primary: {primary_exc}. Secondary: {secondary_exc}"
+                ) from secondary_exc

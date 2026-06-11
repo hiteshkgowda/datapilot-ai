@@ -1,4 +1,5 @@
 import { api, apiFetch, ApiError } from "./client";
+import { getAuthToken } from "@/lib/auth-token";
 import type {
   DatasetListResponse,
   DatasetPreview,
@@ -31,9 +32,13 @@ export async function uploadDataset(file: File): Promise<UploadResponse> {
   form.append("file", file);
 
   // Do NOT set Content-Type — browser must set the multipart boundary.
+  const uploadHeaders: HeadersInit = {};
+  const token = getAuthToken();
+  if (token) uploadHeaders["Authorization"] = `Bearer ${token}`;
+
   const res = await fetch(
     `${process.env.NEXT_PUBLIC_BACKEND_URL ?? "http://localhost:8000"}${endpoint}`,
-    { method: "POST", body: form }
+    { method: "POST", body: form, headers: uploadHeaders }
   );
 
   if (!res.ok) {

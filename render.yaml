@@ -1,0 +1,58 @@
+## Render deployment manifest — Universal Data Assistant
+##
+## One file covers both tiers:
+##
+##   FREE TIER  — remove the `disk:` block below. Storage is ephemeral;
+##                the UI will show a yellow warning banner automatically.
+##
+##   PAID TIER  — keep the `disk:` block. Set STORAGE_BASE_DIR=/data.
+##                The banner will not appear.
+##
+## BEFORE DEPLOYING (all tiers):
+##   Set every envVar marked "sync: false" in the Render dashboard.
+##   Never commit real secrets to this file.
+
+services:
+  # ── Backend: FastAPI ────────────────────────────────────────────────────────
+  - type: web
+    name: uda-backend
+    runtime: python
+    rootDir: .
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+
+    # ── Persistent Disk (paid tier only) ──────────────────────────────────────
+    # Remove this block entirely on the free tier.
+    # On free tier, STORAGE_BASE_DIR must also be removed (or left unset).
+    disk:
+      name: uda-storage
+      mountPath: /data
+      sizeGB: 1
+
+    envVars:
+      # ── Required secrets — set in Render dashboard, never in this file ──────
+      - key: BACKEND_JWT_SECRET
+        sync: false           # generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+      - key: GROQ_API_KEY
+        sync: false
+      - key: DB_ENCRYPTION_KEY
+        sync: false           # generate: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: CRUD_SECRET_KEY
+        sync: false           # generate: python -c "import secrets; print(secrets.token_urlsafe(32))"
+      - key: GOOGLE_CLIENT_ID
+        sync: false           # from Google Cloud Console → APIs & Services → Credentials
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+
+      # ── Application configuration ────────────────────────────────────────────
+      - key: APP_ENV
+        value: production
+      - key: LLM_PROVIDER
+        value: groq
+      - key: FRONTEND_URL
+        sync: false           # set to your Vercel URL: https://your-app.vercel.app
+
+      # ── Paid tier only — remove on free tier ─────────────────────────────────
+      - key: STORAGE_BASE_DIR
+        value: /data

@@ -1,0 +1,51 @@
+# Universal Data Assistant — runtime dependencies
+# Lower bounds (>=) are used intentionally so pip can resolve the
+# wheels that ship for newer Python runtimes (e.g. 3.13/3.14).
+
+# --- Backend (API) ---
+fastapi>=0.115.0
+uvicorn[standard]>=0.34.0
+python-multipart>=0.0.20        # required by FastAPI for file uploads
+httpx>=0.27.0                   # async client for the Ollama LLM provider
+
+# --- Configuration ---
+pydantic>=2.10.0
+pydantic-settings>=2.7.0
+python-dotenv>=1.0.1
+
+# --- Data processing ---
+pandas>=2.2.0
+numpy>=2.1.0
+openpyxl>=3.1.5                 # Excel (.xlsx) engine for pandas
+
+# --- Database connectivity ---
+SQLAlchemy>=2.0.0
+cryptography>=42.0.0            # Fernet encryption for stored DB credentials
+psycopg[binary]>=3.1.0         # PostgreSQL driver (loaded only when used)
+PyMySQL>=1.1.0                  # MySQL driver (loaded only when used)
+
+# --- Visualization ---
+plotly>=5.24.0                  # deterministic chart (figure JSON) generation
+
+# --- Forecasting ---
+statsmodels>=0.14.0            # Holt-Winters / STL (numpy fallback if unavailable)
+
+# --- Reporting ---
+reportlab>=4.2.0                # PDF generation
+kaleido>=0.2.1                  # static image export of Plotly figures (PDF charts)
+                                # if kaleido cannot load, reports fall back to data tables
+
+# --- Authentication (Phase A1) ---
+PyJWT>=2.9.0                    # HS256 JWT verification for NextAuth backend tokens
+
+# --- Agent orchestration ---
+langgraph>=1.0.0                # LangGraph state machine for agent orchestration
+langgraph-checkpoint-sqlite>=1.0.0
+                                # Persistent SQLite checkpointer for agent sessions.
+                                # Enables cross-restart session continuity (interrupt/resume).
+aiosqlite>=0.19.0               # Required by langgraph-checkpoint-sqlite
+
+# --- Frontend ---
+# The Next.js frontend (frontend-next/) is a separate Node.js project; it
+# needs no Python packages. The legacy Streamlit app (frontend/app.py) is
+# no longer installed — removed streamlit and requests from backend deps.

@@ -1,0 +1,55 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+
+# --- Environment / secrets ---
+.env
+
+# --- Runtime storage (keep folders, ignore contents) ---
+# uploads, reports, connections were already here; crud_audit, crud_rollback,
+# and agent_sessions are added because they contain user data and must not be committed.
+uploads/*
+!uploads/.gitkeep
+reports/*
+!reports/.gitkeep
+# Connection definitions contain encrypted credentials — never commit them.
+connections/*
+!connections/.gitkeep
+# Audit logs contain user emails and SQL parameters — never commit them.
+crud_audit/*
+!crud_audit/.gitkeep
+# Rollback snapshots contain pre-image row data — never commit them.
+crud_rollback/*
+!crud_rollback/.gitkeep
+# Agent sessions contain conversation history and goals — never commit them.
+agent_sessions/*
+!agent_sessions/.gitkeep
+# backend/ has its own copies of these dirs when run from inside backend/
+backend/uploads/*
+backend/reports/*
+backend/connections/*
+backend/crud_audit/*
+backend/crud_rollback/*
+backend/agent_sessions/*
+
+# --- Node.js ---
+node_modules/
+frontend-next/.next/
+frontend-next/out/
+
+# --- Tooling / IDE ---
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.DS_Store
+.idea/
+.vscode/

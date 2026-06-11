@@ -1,0 +1,329 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ── Light mode — QF Admin Portal green palette ───────────────────── */
+    --background: 150 30% 99%;        /* near-white with green warmth */
+    --foreground: 147 28% 14%;        /* #1a2e23 QF dark text */
+
+    --sidebar: 148 33% 96%;           /* #f0f7f3 light mint */
+    --sidebar-border: 146 24% 82%;    /* #c8ddd1 QF border */
+    --sidebar-foreground: 147 28% 14%;
+    --sidebar-muted: 151 13% 41%;     /* #5a7568 QF text-light */
+    --sidebar-active: 148 40% 93%;    /* #e8f5ee mint pale */
+
+    --card: 0 0% 100%;
+    --card-foreground: 147 28% 14%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 147 28% 14%;
+
+    --muted: 148 33% 95%;
+    --muted-foreground: 151 13% 41%;  /* #5a7568 */
+
+    --accent: 148 40% 93%;            /* #e8f5ee mint pale */
+    --accent-foreground: 147 28% 14%;
+
+    --secondary: 148 33% 95%;
+    --secondary-foreground: 147 28% 14%;
+
+    --border: 146 24% 82%;            /* #c8ddd1 */
+    --input: 146 24% 82%;
+
+    --primary: 147 46% 33%;           /* #2d7a50 QF green */
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 148 40% 93%;     /* #e8f5ee */
+
+    --destructive: 0 74% 58%;         /* #d94f4f QF red */
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 148 46% 42%;           /* #3a9d68 QF green-light */
+    --warning: 38 92% 46%;
+
+    --elevated: 0 0% 100%;
+
+    --ring: 147 46% 33%;
+    --radius: 0.625rem;               /* 10px — matches QF --radius-sm */
+
+    --shadow-sm:     0 1px 2px rgba(26, 92, 58, 0.06), 0 1px 3px rgba(26, 92, 58, 0.08);
+    --shadow-md:     0 4px 20px rgba(26, 92, 58, 0.10), 0 2px 4px rgba(26, 92, 58, 0.06);
+    --shadow-lg:     0 8px 30px rgba(26, 92, 58, 0.18), 0 4px 10px rgba(26, 92, 58, 0.10);
+    --shadow-glow:    0 0 0 1px rgba(45, 122, 80, 0.25), 0 0 20px rgba(45, 122, 80, 0.12);
+    --shadow-glow-sm: 0 0 0 1px rgba(45, 122, 80, 0.15), 0 0 10px rgba(45, 122, 80, 0.08);
+  }
+
+  .dark {
+    /* ── Dark mode — QF forest green palette ─────────────────────────── */
+    --background: 148 34% 9%;         /* #0f1e16 */
+    --foreground: 144 52% 93%;        /* #e8f5ee */
+
+    --sidebar: 148 32% 7%;            /* #0d1a11 — darker than bg */
+    --sidebar-border: 147 26% 16%;    /* #1e3329 */
+    --sidebar-foreground: 144 52% 93%;
+    --sidebar-muted: 148 16% 56%;     /* #a0b8aa */
+    --sidebar-active: 147 26% 16%;    /* #1e3329 */
+
+    --card: 147 28% 14%;              /* #1a2e23 */
+    --card-foreground: 144 52% 93%;
+
+    --popover: 147 26% 16%;           /* #1e3329 */
+    --popover-foreground: 144 52% 93%;
+
+    --muted: 147 22% 18%;             /* #253d30 */
+    --muted-foreground: 148 16% 56%;  /* #a0b8aa */
+
+    --accent: 147 22% 18%;
+    --accent-foreground: 144 52% 93%;
+
+    --secondary: 147 22% 18%;
+    --secondary-foreground: 144 52% 93%;
+
+    --border: 147 26% 18%;            /* #2d4a3a */
+    --input: 147 26% 18%;
+
+    --primary: 148 46% 42%;           /* #3a9d68 — lighter for dark mode */
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 147 28% 20%;
+
+    --destructive: 0 74% 58%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 148 46% 47%;
+    --warning: 38 92% 54%;
+
+    --elevated: 147 22% 18%;
+
+    --ring: 148 46% 42%;
+    --radius: 0.625rem;
+
+    --shadow-sm:     0 1px 3px rgba(0, 0, 0, 0.35), 0 1px 2px rgba(0, 0, 0, 0.25);
+    --shadow-md:     0 4px 20px rgba(0, 0, 0, 0.50), 0 2px 4px rgba(0, 0, 0, 0.30);
+    --shadow-lg:     0 10px 40px rgba(0, 0, 0, 0.60), 0 4px 16px rgba(0, 0, 0, 0.40);
+    --shadow-glow:    0 0 0 1px rgba(58, 157, 104, 0.35), 0 0 28px rgba(58, 157, 104, 0.18);
+    --shadow-glow-sm: 0 0 0 1px rgba(58, 157, 104, 0.22), 0 0 14px rgba(58, 157, 104, 0.12);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* QF atmospheric gradient background in dark mode */
+  .dark body {
+    background-image: linear-gradient(
+      145deg,
+      #0f1e16 0%,
+      #1a2e23 30%,
+      #253d30 60%,
+      #1a2e23 100%
+    );
+    background-attachment: fixed;
+  }
+
+  /* ── Scrollbar ──────────────────────────────────────────────────────── */
+  ::-webkit-scrollbar {
+    @apply w-[5px] h-[5px];
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply rounded-full;
+    background: rgba(45, 122, 80, 0.3);
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(45, 122, 80, 0.5);
+  }
+
+  /* ── Focus ring ─────────────────────────────────────────────────────── */
+  :focus-visible {
+    @apply outline-none ring-2 ring-ring/60 ring-offset-1 ring-offset-background;
+  }
+
+  /* ── Typography base ────────────────────────────────────────────────── */
+  h1, h2, h3 {
+    font-family: var(--font-display), "Playfair Display", Georgia, serif;
+    letter-spacing: -0.01em;
+  }
+
+  h4, h5, h6 {
+    letter-spacing: -0.01em;
+  }
+}
+
+@layer utilities {
+  /* ── Shimmer skeleton ───────────────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 25%,
+      hsl(var(--accent)) 50%,
+      hsl(var(--muted)) 75%
+    );
+    background-size: 200% 100%;
+    @apply animate-shimmer rounded-md;
+  }
+
+  /* ── Sidebar dimensions ─────────────────────────────────────────────── */
+  .sidebar-expanded {
+    width: 232px;
+  }
+  .sidebar-collapsed {
+    width: 52px;
+  }
+
+  /* ── Sidebar profile section — QF gradient backgrounds ─────────────── */
+  .sidebar-profile {
+    background: linear-gradient(135deg, #f8fbf9, #f0f7f3);
+  }
+  .dark .sidebar-profile {
+    background: linear-gradient(135deg, #1e3329, #253d30);
+  }
+
+  /* ── QF brand gradients ─────────────────────────────────────────────── */
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(var(--primary)), hsl(148 46% 52%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, hsl(149 56% 23%), hsl(var(--primary)));
+  }
+
+  .bg-grid {
+    background-image:
+      linear-gradient(hsl(var(--border) / 0.4) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(var(--border) / 0.4) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* ── Surface / elevation ────────────────────────────────────────────── */
+  .surface-glass {
+    background: hsl(var(--card) / 0.65);
+    backdrop-filter: blur(12px) saturate(1.4);
+    border: 1px solid hsl(var(--border) / 0.7);
+  }
+
+  .elevation-sm  { box-shadow: var(--shadow-sm); }
+  .elevation-md  { box-shadow: var(--shadow-md); }
+  .elevation-lg  { box-shadow: var(--shadow-lg); }
+  .elevation-glow    { box-shadow: var(--shadow-glow); }
+  .elevation-glow-sm { box-shadow: var(--shadow-glow-sm); }
+
+  /* ── Glow ring (hover states) ───────────────────────────────────────── */
+  .ring-glow {
+    box-shadow: 0 0 0 1px rgba(45, 122, 80, 0.25), 0 0 16px rgba(45, 122, 80, 0.12);
+  }
+
+  /* ── Status dot ─────────────────────────────────────────────────────── */
+  .status-dot-online {
+    background: hsl(var(--success));
+    box-shadow: 0 0 0 2px hsl(var(--success) / 0.25);
+    animation: pulse-status 2.5s ease-in-out infinite;
+  }
+  .status-dot-offline {
+    background: hsl(var(--destructive));
+  }
+  .status-dot-pending {
+    background: hsl(var(--muted-foreground));
+    animation: pulse-status 1.5s ease-in-out infinite;
+  }
+
+  /* ── Primary button gradient (QF style) ─────────────────────────────── */
+  .btn-qf-primary {
+    background: linear-gradient(135deg, hsl(149 56% 23%), hsl(var(--primary)));
+    position: relative;
+    overflow: hidden;
+    letter-spacing: 0.3px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .btn-qf-primary::before {
+    content: '';
+    position: absolute;
+    top: 0; left: -100%; bottom: 0;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+    transition: left 0.5s ease;
+    pointer-events: none;
+  }
+  .btn-qf-primary:hover::before {
+    left: 100%;
+  }
+  .btn-qf-primary:hover {
+    box-shadow: 0 6px 20px rgba(26, 92, 58, 0.35);
+    transform: translateY(-1px);
+  }
+  .btn-qf-primary:active {
+    transform: translateY(0);
+  }
+
+  /* ── Card hover lift (QF pattern) ───────────────────────────────────── */
+  .card-hover {
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .card-hover:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-lg);
+  }
+}
+
+/* ── Keyframes ──────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position:  200% 0; }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in-scale {
+  from { opacity: 0; transform: scale(0.97); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slide-in-right {
+  from { opacity: 0; transform: translateX(12px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes pulse-status {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.6; }
+}
+
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes card-fade-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

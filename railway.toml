@@ -1,0 +1,31 @@
+## Railway deployment manifest — Universal Data Assistant
+##
+## Deploy the backend service from this file.  The frontend is a separate
+## Railway service (or deployed to Vercel).
+##
+## BEFORE DEPLOYING:
+##   1. In the Railway dashboard, add a Volume and mount it at /data.
+##   2. Set all environment variables marked as required below.
+##   3. Set FRONTEND_URL to your frontend deployment URL.
+
+[build]
+builder = "nixpacks"
+buildCommand = "pip install -r requirements.txt"
+
+[deploy]
+startCommand = "cd backend && uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1"
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+## Required environment variables — set in Railway dashboard:
+##
+##   APP_ENV=production
+##   STORAGE_BASE_DIR=/data          ← must match the Volume mount path
+##   FRONTEND_URL=https://...        ← your Vercel / Railway frontend URL
+##   BACKEND_JWT_SECRET=<secret>     ← openssl rand -base64 32
+##   NEXTAUTH_SECRET=<secret>        ← openssl rand -base64 32
+##   GROQ_API_KEY=<key>              ← or set LLM_PROVIDER=ollama + OLLAMA_BASE_URL
+##   DB_ENCRYPTION_KEY=<fernet-key>  ← python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+##   CRUD_SECRET_KEY=<secret>        ← openssl rand -base64 32

@@ -70,3 +70,23 @@ class AgentPlanError(DataAssistantError):
 
 class AgentExecutionError(DataAssistantError):
     """Raised when the agent graph encounters an unrecoverable execution failure."""
+
+
+class AnomalyDetectionError(DataAssistantError):
+    """Raised when the anomaly detection pipeline encounters an unrecoverable error."""
+
+
+class InsightGenerationError(DataAssistantError):
+    """Raised when the insight generation pipeline encounters an unrecoverable error."""
+
+
+class RootCauseError(DataAssistantError):
+    """Raised when the root cause analysis pipeline encounters an unrecoverable error."""
+
+
+class RecommendationError(DataAssistantError):
+    """Raised when the recommendation engine encounters an unrecoverable error."""
+
+
+class MemoryError(DataAssistantError):
+    """Raised when the conversational memory system encounters an unrecoverable error."""

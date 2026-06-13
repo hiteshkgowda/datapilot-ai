@@ -22,6 +22,7 @@ _STORAGE_FIELDS: tuple[str, ...] = (
     "crud_audit_dir",
     "crud_rollback_dir",
     "agent_sessions_dir",
+    "memory_store_dir",
 )
 
 
@@ -98,6 +99,9 @@ class Settings(BaseSettings):
     # Agent session checkpoints (SqliteSaver writes sessions.db here).
     # Persists interrupted/resumed agent conversations across restarts.
     agent_sessions_dir: Path = Path("agent_sessions")
+
+    # Conversational memory store (conversations.db lives here).
+    memory_store_dir: Path = Path("memory_store")
 
     # Frontend / CORS
     # In development, localhost:3000 is always allowed.
@@ -211,6 +215,60 @@ class Settings(BaseSettings):
     # Base64-encoded secret for HMAC confirmation tokens. If unset, a
     # per-process random secret is used (tokens survive only one process restart).
     crud_secret_key: Optional[str] = None
+
+    # ------------------------------------------------------------------ #
+    # Anomaly Detection Engine
+    # ------------------------------------------------------------------ #
+    anomaly_cache_ttl_seconds: float = 300.0
+    anomaly_cache_max_entries: int = 30
+    # Default detection thresholds (overridable per-request).
+    anomaly_zscore_threshold: float = 3.0
+    anomaly_iqr_multiplier: float = 1.5
+    anomaly_contamination: float = 0.05
+
+    # ------------------------------------------------------------------ #
+    # Root Cause Analysis Agent
+    # ------------------------------------------------------------------ #
+    rca_cache_ttl_seconds: float = 300.0
+    rca_cache_max_entries: int = 30
+    # Maximum unique dimension values before a column is excluded from decomposition.
+    rca_max_dim_cardinality: int = 50
+
+    # ------------------------------------------------------------------ #
+    # Recommendation Engine
+    # ------------------------------------------------------------------ #
+    recommendation_cache_ttl_seconds: float = 300.0
+    recommendation_cache_max_entries: int = 30
+    recommendation_max_default: int = 10
+
+    # ------------------------------------------------------------------ #
+    # Conversational Memory
+    # ------------------------------------------------------------------ #
+    # Redis URL for L2 cache (optional). Example: redis://localhost:6379
+    # If unset, only the in-process TTLCache and SQLite are used.
+    redis_url: Optional[str] = None
+    # Time-to-live for session data in Redis and for SQLite expiry cleanup.
+    memory_session_ttl_seconds: float = 86400.0   # 24 hours
+    # In-process L1 cache size (sessions) and TTL.
+    memory_l1_ttl_seconds: float = 300.0
+    memory_l1_max_sessions: int = 100
+    # Maximum turns kept per session (oldest are evicted first).
+    memory_max_turns_per_session: int = 20
+    # Maximum table_data rows stored per turn (prevents unbounded payload growth).
+    memory_max_table_rows: int = 50
+
+    # ------------------------------------------------------------------ #
+    # AI Insight Generation Engine
+    # ------------------------------------------------------------------ #
+    # Cache: responses are keyed by sha256(dataset_id|question|table_data).
+    insight_cache_ttl_seconds: float = 300.0
+    insight_cache_max_entries: int = 50
+    # Cap the number of rows fed to the statistical engine (performance guard).
+    insight_max_table_rows: int = 1000
+    # Minimum |r| for a correlation to be included in the findings.
+    insight_correlation_threshold: float = 0.5
+    # Top-N and bottom-N performers to surface per metric column.
+    insight_top_n: int = 3
 
     @property
     def max_upload_size_bytes(self) -> int:

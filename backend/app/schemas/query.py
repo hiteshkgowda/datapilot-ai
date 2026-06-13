@@ -13,6 +13,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from app.schemas.chart import ChartType
+from app.schemas.insight import InsightResponse
 
 
 class Operation(str, Enum):
@@ -74,6 +75,13 @@ class QueryRequest(BaseModel):
     question: str = Field(
         ..., min_length=1, description="The natural-language question."
     )
+    include_insights: bool = Field(
+        default=False,
+        description=(
+            "When True, the response will include an AI-generated InsightResponse "
+            "derived from the query result table. Adds one LLM round-trip to latency."
+        ),
+    )
 
 
 class QueryResponse(BaseModel):
@@ -88,4 +96,11 @@ class QueryResponse(BaseModel):
         ...,
         ge=0,
         description="End-to-end time including the LLM call, in milliseconds.",
+    )
+    insights: Optional[InsightResponse] = Field(
+        default=None,
+        description=(
+            "AI-generated insights for the query result. "
+            "Populated only when include_insights=True in the request."
+        ),
     )

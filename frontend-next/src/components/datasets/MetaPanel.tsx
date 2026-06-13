@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import {
+  AlertTriangle,
   BarChart2,
   Calendar,
   Database,
   FileSpreadsheet,
   FileText,
   Layers,
+  Lightbulb,
   Rows3,
   TrendingUp,
   FileOutput,
@@ -86,6 +88,16 @@ export function MetaPanel({ dataset }: MetaPanelProps) {
       href: `/datasets/${dataset.id}/reports`,
       icon: FileOutput,
       label: "Generate Report",
+    },
+    {
+      href: `/datasets/${dataset.id}/anomalies`,
+      icon: AlertTriangle,
+      label: "Detect Anomalies",
+    },
+    {
+      href: `/datasets/${dataset.id}/recommendations`,
+      icon: Lightbulb,
+      label: "Recommendations",
     },
   ];
 

@@ -9,12 +9,17 @@ Routes:
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import asyncio
+import logging
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.api.dependencies import (
     get_agent_orchestrator,
     get_connection_service,
     get_dataset_service,
+    get_memory_service,
 )
 from app.api.params import HexId
 from app.core.auth import get_current_user
@@ -33,11 +38,14 @@ from app.schemas.agent import (
     AgentSessionInfo,
 )
 from app.schemas.auth import CurrentUser
+from app.schemas.memory import TurnType
 from app.services.agent_orchestrator import AgentOrchestrator
 from app.services.connection_service import ConnectionService
 from app.services.dataset_service import DatasetService
+from app.services.memory_service import MemoryService
 
 router = APIRouter(prefix="/agent", tags=["agent"])
+logger = logging.getLogger(__name__)
 
 
 def _check_resource_ownership(
@@ -75,18 +83,50 @@ async def run_agent(
     orchestrator: AgentOrchestrator = Depends(get_agent_orchestrator),
     datasets: DatasetService = Depends(get_dataset_service),
     connections: ConnectionService = Depends(get_connection_service),
+    memory: MemoryService = Depends(get_memory_service),
     current_user: CurrentUser = Depends(get_current_user),
+    x_session_id: Optional[str] = Header(None, alias="X-Session-Id"),
 ) -> AgentRunResponse:
-    """Start a new multi-step agent session."""
+    """Start a new multi-step agent session.
+
+    If X-Session-Id is provided, prior conversation turns are injected into the
+    agent's conversation_history so it can resolve references like "forecast them"
+    back to results from earlier in the session.
+    """
     _check_resource_ownership(request, datasets, connections, current_user.sub)
+
+    # Inject prior session context so the agent understands conversational references.
+    if x_session_id:
+        prior_context = await memory.build_agent_context(x_session_id, current_user.sub)
+        if prior_context:
+            # Prepend session history before any caller-supplied context.
+            merged_context = [item["goal"] for item in prior_context] + list(request.context)
+            request = request.model_copy(update={"context": merged_context})
+
     try:
-        return await orchestrator.run(request, owner_sub=current_user.sub)
+        resp = await orchestrator.run(request, owner_sub=current_user.sub)
     except AgentPlanError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     except AgentExecutionError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
     except ValidationError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+
+    # Record the completed agent turn (fire-and-forget).
+    if x_session_id and resp.final_answer:
+        asyncio.ensure_future(
+            memory.record_turn(
+                session_id=x_session_id,
+                user_sub=current_user.sub,
+                turn_type=TurnType.AGENT,
+                dataset_id=request.dataset_id,
+                question=request.question,
+                answer=resp.final_answer,
+                metadata={"session_id": resp.session_id, "status": resp.status.value},
+            )
+        )
+
+    return resp
 
 
 @router.post(

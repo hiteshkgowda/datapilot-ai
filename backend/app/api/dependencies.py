@@ -83,6 +83,11 @@ from app.services.groq_provider import (
     GroqQueryPlanner,
 )
 from app.services.llm_provider import OllamaQueryPlanner, QueryPlanner
+from app.services.anomaly_service import AnomalyDetectionService
+from app.services.insight_service import InsightGenerationService
+from app.services.memory_service import MemoryService
+from app.services.recommendation_service import RecommendationService
+from app.services.root_cause_service import RootCauseService
 from app.services.report_service import ReportForecastConfig, ReportService
 from app.services.sql_executor import SqlExecutor
 from app.services.sql_translator import SQLTranslator
@@ -242,6 +247,9 @@ def get_agent_orchestrator() -> AgentOrchestrator:
         forecast_service=get_forecast_service(),
         report_service=get_report_service(),
         crud_service=get_crud_service(),
+        anomaly_service=get_anomaly_service(),
+        root_cause_service=get_root_cause_service(),
+        recommendation_service=get_recommendation_service(),
     )
     graph = build_agent_graph(
         tools=registry,
@@ -250,6 +258,86 @@ def get_agent_orchestrator() -> AgentOrchestrator:
         checkpointer=get_checkpointer(),
     )
     return AgentOrchestrator(graph=graph, planner=planner, max_retries=settings.agent_max_retries)
+
+
+@lru_cache(maxsize=1)
+def get_anomaly_service() -> AnomalyDetectionService:
+    """Provide a process-wide :class:`AnomalyDetectionService` instance."""
+    settings = get_settings()
+    return AnomalyDetectionService(
+        cache_ttl=settings.anomaly_cache_ttl_seconds,
+        cache_max_entries=settings.anomaly_cache_max_entries,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_root_cause_service() -> RootCauseService:
+    """Provide a process-wide :class:`RootCauseService` instance."""
+    from agents.root_cause_agent import RootCauseAgent  # local import — agents/ pkg lives outside app/
+
+    settings = get_settings()
+    agent = RootCauseAgent(settings)
+    return RootCauseService(
+        root_cause_agent=agent,
+        cache_ttl=settings.rca_cache_ttl_seconds,
+        cache_max_entries=settings.rca_cache_max_entries,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_memory_service() -> MemoryService:
+    """Provide a process-wide :class:`MemoryService` instance."""
+    from memory.conversation_store import ConversationStore  # noqa: PLC0415
+    from memory.session_memory import SessionMemory  # noqa: PLC0415
+    from memory.context_builder import ContextBuilder  # noqa: PLC0415
+
+    settings = get_settings()
+    store = ConversationStore(settings.memory_store_dir / "conversations.db")
+    session_mem = SessionMemory(
+        ttl_seconds=settings.memory_l1_ttl_seconds,
+        max_sessions=settings.memory_l1_max_sessions,
+        redis_url=settings.redis_url,
+        redis_ttl_seconds=settings.memory_session_ttl_seconds,
+    )
+    return MemoryService(
+        store=store,
+        session_memory=session_mem,
+        context_builder=ContextBuilder(),
+        max_turns_per_session=settings.memory_max_turns_per_session,
+        max_table_rows=settings.memory_max_table_rows,
+        session_ttl_seconds=settings.memory_session_ttl_seconds,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_recommendation_service() -> RecommendationService:
+    """Provide a process-wide :class:`RecommendationService` instance."""
+    from agents.recommendation_agent import RecommendationAgent  # local import — avoids circular
+
+    settings = get_settings()
+    agent = RecommendationAgent(settings)
+    return RecommendationService(
+        recommendation_agent=agent,
+        cache_ttl=settings.recommendation_cache_ttl_seconds,
+        cache_max_entries=settings.recommendation_cache_max_entries,
+    )
+
+
+@lru_cache(maxsize=1)
+def get_insight_service() -> InsightGenerationService:
+    """Provide a process-wide :class:`InsightGenerationService` instance."""
+    from agents.insight_agent import InsightAgent  # local import — agents/ pkg lives outside app/
+
+    settings = get_settings()
+    agent = InsightAgent(settings)
+    return InsightGenerationService(
+        insight_agent=agent,
+        cache_ttl=settings.insight_cache_ttl_seconds,
+        cache_max_entries=settings.insight_cache_max_entries,
+        max_table_rows=settings.insight_max_table_rows,
+        top_n=settings.insight_top_n,
+        correlation_threshold=settings.insight_correlation_threshold,
+    )
 
 
 @lru_cache(maxsize=1)

@@ -354,6 +354,148 @@ class CrudExecuteTool:
 # 8. SQL query
 # ---------------------------------------------------------------------------
 
+class AnomalyDetectionTool:
+    name = "anomaly_detection"
+    description = (
+        "Detect anomalies in a dataset's numeric columns. "
+        "Finds revenue spikes, drops, outliers, KPI deviations, and unexpected patterns "
+        "using z-score, IQR, Isolation Forest, and seasonal decomposition. "
+        "Use when the user asks about unusual values, outliers, anomalies, or unexpected changes."
+    )
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "dataset_id":       {"type": "string"},
+            "columns":          {"type": "array", "items": {"type": "string"}},
+            "methods":          {"type": "array", "items": {"type": "string"}},
+            "zscore_threshold": {"type": "number"},
+            "time_column":      {"type": "string"},
+        },
+        "required": ["dataset_id"],
+    }
+    requires_approval = False
+
+    def __init__(self, anomaly_service: Any, dataset_service: Any) -> None:
+        self._anomaly_svc = anomaly_service
+        self._ds_svc = dataset_service
+
+    async def execute(self, arguments: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
+        from starlette.concurrency import run_in_threadpool  # noqa: PLC0415
+
+        dataset_id: str = arguments["dataset_id"]
+        try:
+            df, _ = await run_in_threadpool(self._ds_svc.load_dataframe, dataset_id)
+        except Exception as exc:
+            return {"error": f"Could not load dataset: {exc}"}
+
+        result = await self._anomaly_svc.detect(df=df, request_dict=arguments)
+        summary = result.model_dump()
+        summary.pop("chart_spec", None)  # strip large payload from agent context
+        return summary
+
+
+class RootCauseAnalysisTool:
+    name = "root_cause_analysis"
+    description = (
+        "Identify why a metric changed between two time periods. "
+        "Decomposes the change into contributing dimensions (region, product, "
+        "segment, channel, category) and ranks the primary drivers by impact. "
+        "Use when the user asks 'why did X drop/grow' or 'what drove the change in Y'."
+    )
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "dataset_id":      {"type": "string"},
+            "question":        {"type": "string"},
+            "metric_column":   {"type": "string"},
+            "period_column":   {"type": "string"},
+            "current_period":  {"type": "string"},
+            "previous_period": {"type": "string"},
+        },
+        "required": ["dataset_id", "question"],
+    }
+    requires_approval = False
+
+    def __init__(self, root_cause_service: Any, dataset_service: Any) -> None:
+        self._rca_svc = root_cause_service
+        self._ds_svc = dataset_service
+
+    async def execute(self, arguments: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
+        import pandas as pd  # noqa: PLC0415
+        from starlette.concurrency import run_in_threadpool  # noqa: PLC0415
+
+        dataset_id: str = arguments["dataset_id"]
+        try:
+            df, _ = await run_in_threadpool(self._ds_svc.load_dataframe, dataset_id)
+        except Exception as exc:
+            return {"error": f"Could not load dataset: {exc}"}
+
+        result = await self._rca_svc.analyze(df=df, request_dict=arguments)
+        return result.model_dump()
+
+
+class RecommendationTool:
+    name = "recommendation"
+    description = (
+        "Generate prioritised, data-grounded recommendations from anomaly, insight, "
+        "or forecast results. Returns a ranked action list with reasons and expected "
+        "impact. Use when the user asks 'what should I do', 'what actions should I take', "
+        "or 'give me recommendations'."
+    )
+    input_schema = {
+        "type": "object",
+        "properties": {
+            "dataset_id":        {"type": "string"},
+            "anomalies":         {"type": "object", "description": "Output of anomaly_detection tool."},
+            "insights":          {"type": "object", "description": "Output of insight generation."},
+            "forecast":          {"type": "object", "description": "Output of forecast tool."},
+            "context":           {"type": "string", "description": "Optional business context."},
+            "max_recommendations": {"type": "integer", "default": 10},
+        },
+        "required": ["dataset_id"],
+    }
+    requires_approval = False
+
+    def __init__(self, recommendation_service: Any) -> None:
+        self._svc = recommendation_service
+
+    async def execute(self, arguments: dict[str, Any], state: dict[str, Any]) -> dict[str, Any]:
+        from app.schemas.recommendation import RecommendationRequest  # noqa: PLC0415
+
+        # Reconstruct typed inputs from dicts if present.
+        anomalies = None
+        insights = None
+        if arguments.get("anomalies"):
+            try:
+                from app.schemas.anomaly import AnomalyResponse  # noqa: PLC0415
+                anomalies = AnomalyResponse(**arguments["anomalies"])
+            except Exception:
+                pass
+        if arguments.get("insights"):
+            try:
+                from app.schemas.insight import InsightResponse  # noqa: PLC0415
+                insights = InsightResponse(**arguments["insights"])
+            except Exception:
+                pass
+
+        request = RecommendationRequest(
+            dataset_id=arguments["dataset_id"],
+            anomalies=anomalies,
+            insights=insights,
+            forecast=arguments.get("forecast"),
+            context=arguments.get("context"),
+            max_recommendations=int(arguments.get("max_recommendations", 10)),
+            llm_enhance=True,
+        )
+        resp = await self._svc.generate(request)
+        return {
+            "summary": resp.summary,
+            "total_count": resp.total_count,
+            "llm_enhanced": resp.llm_enhanced,
+            "recommendations": [r.model_dump() for r in resp.recommendations[:5]],
+        }
+
+
 class SqlQueryTool:
     name = "sql_query"
     description = (
@@ -397,6 +539,9 @@ TOOL_NAMES: tuple[str, ...] = (
     "crud_preview",
     "crud_execute",
     "sql_query",
+    "anomaly_detection",
+    "root_cause_analysis",
+    "recommendation",
 )
 
 
@@ -435,9 +580,12 @@ def build_registry(
     forecast_service: Any,
     report_service: Any,
     crud_service: Any,
+    anomaly_service: Any = None,
+    root_cause_service: Any = None,
+    recommendation_service: Any = None,
 ) -> ToolRegistry:
     """Construct a ToolRegistry from the injected service singletons."""
-    return ToolRegistry([
+    tools: list[Any] = [
         DatasetPreviewTool(dataset_service),
         AnalyticsTool(analytics_service),
         VisualizationTool(visualization_service),
@@ -446,4 +594,11 @@ def build_registry(
         CrudPreviewTool(crud_service),
         CrudExecuteTool(crud_service),
         SqlQueryTool(analytics_service),
-    ])
+    ]
+    if anomaly_service is not None:
+        tools.append(AnomalyDetectionTool(anomaly_service, dataset_service))
+    if root_cause_service is not None:
+        tools.append(RootCauseAnalysisTool(root_cause_service, dataset_service))
+    if recommendation_service is not None:
+        tools.append(RecommendationTool(recommendation_service))
+    return ToolRegistry(tools)

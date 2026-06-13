@@ -189,6 +189,110 @@ export interface RegisterTableRequest {
 }
 
 // ---------------------------------------------------------------------------
+// Anomaly Detection
+// ---------------------------------------------------------------------------
+
+export type AnomalySeverity = "none" | "low" | "medium" | "high" | "critical";
+export type AnomalyMethod = "zscore" | "iqr" | "isolation_forest" | "seasonal";
+
+export interface AnomalyPoint {
+  row_index: number;
+  value: number;
+  score: number;
+  severity: AnomalySeverity;
+  method: AnomalyMethod;
+  label: string | null;
+}
+
+export interface ColumnAnomaly {
+  column: string;
+  anomaly_count: number;
+  anomaly_points: AnomalyPoint[];
+  methods: AnomalyMethod[];
+  mean: number;
+  std: number;
+  q1: number;
+  q3: number;
+  min_value: number;
+  max_value: number;
+}
+
+export interface AnomalyRequest {
+  dataset_id: string;
+  columns?: string[];
+  methods?: AnomalyMethod[];
+  zscore_threshold?: number;
+  iqr_multiplier?: number;
+  contamination?: number;
+  seasonal_period?: number;
+  time_column?: string;
+  merge_methods?: boolean;
+}
+
+export interface AnomalyResponse {
+  anomalies: ColumnAnomaly[];
+  severity: AnomalySeverity;
+  affected_metrics: string[];
+  possible_reasons: string[];
+  total_anomaly_count: number;
+  chart_spec: Record<string, unknown> | null;
+  detection_time_ms: number;
+  methods_used: AnomalyMethod[];
+  cache_hit: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation Engine
+// ---------------------------------------------------------------------------
+
+export type RecommendationPriority = "critical" | "high" | "medium" | "low";
+export type RecommendationCategory =
+  | "revenue"
+  | "operations"
+  | "inventory"
+  | "marketing"
+  | "data_quality"
+  | "monitoring"
+  | "general";
+export type RecommendationSource =
+  | "anomaly"
+  | "insight"
+  | "forecast"
+  | "cross_signal"
+  | "rule";
+
+export interface Recommendation {
+  priority: RecommendationPriority;
+  action: string;
+  reason: string;
+  expected_impact: string;
+  category: RecommendationCategory;
+  source: RecommendationSource;
+  confidence: number;
+  data_points: string[];
+}
+
+export interface RecommendationRequest {
+  dataset_id: string;
+  anomalies?: AnomalyResponse | null;
+  insights?: Record<string, unknown> | null;
+  forecast?: Record<string, unknown> | null;
+  query_results?: Record<string, unknown>[] | null;
+  context?: string | null;
+  max_recommendations?: number;
+  llm_enhance?: boolean;
+}
+
+export interface RecommendationResponse {
+  recommendations: Recommendation[];
+  summary: string;
+  total_count: number;
+  generation_time_ms: number;
+  cache_hit: boolean;
+  llm_enhanced: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Health
 // ---------------------------------------------------------------------------
 

@@ -20,18 +20,27 @@ from app.api.dependencies import (
     get_connection_service,
     get_crud_service,
     get_forecast_planner,
+    get_insight_service,
+    get_memory_service,
     get_query_planner,
+    get_recommendation_service,
+    get_root_cause_service,
     set_checkpointer,
 )
 from app.api.routes import (
     agent,
+    anomalies,
     chart,
     connections,
     crud,
     datasets,
     forecast,
+    insights,
+    memory,
     query,
+    recommendations,
     reports,
+    root_cause,
 )
 from app.core.config import Settings, get_settings
 from app.core.storage import StorageManager
@@ -183,6 +192,20 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         for planner in (get_query_planner(), get_forecast_planner(), crud_planner, agent_planner):
             if hasattr(planner, "set_client"):
                 planner.set_client(client)
+        # Wire the shared client into the InsightAgent so it reuses the same
+        # connection pool and inherits the configured LLM timeout.
+        _insight_agent = get_insight_service()._agent
+        if hasattr(_insight_agent, "set_client"):
+            _insight_agent.set_client(client)
+        _rca_agent = get_root_cause_service()._agent
+        if hasattr(_rca_agent, "set_client"):
+            _rca_agent.set_client(client)
+        _rec_agent = get_recommendation_service()._agent
+        if hasattr(_rec_agent, "set_client"):
+            _rec_agent.set_client(client)
+        # Initialise the conversational memory SQLite store (creates tables / WAL).
+        _mem_svc = get_memory_service()
+        await _mem_svc._store.initialize()
         try:
             yield
         finally:
@@ -225,6 +248,11 @@ def create_app() -> FastAPI:
     app.include_router(forecast.router, prefix=API_PREFIX)
     app.include_router(crud.router, prefix=API_PREFIX)
     app.include_router(agent.router, prefix=API_PREFIX)
+    app.include_router(insights.router, prefix=API_PREFIX)
+    app.include_router(root_cause.router, prefix=API_PREFIX)
+    app.include_router(anomalies.router, prefix=API_PREFIX)
+    app.include_router(recommendations.router, prefix=API_PREFIX)
+    app.include_router(memory.router, prefix=API_PREFIX)
 
     @app.get("/health", tags=["health"], summary="Service health check")
     def health() -> dict[str, Any]:

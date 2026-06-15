@@ -22,6 +22,20 @@ import {
   SESSION_STORAGE_KEY,
   type StoredSession,
 } from "./types";
+
+function getBackendSessionId(session: StoredSession): string | null {
+  for (const turn of session.turns) {
+    if (
+      (turn.role === "agent" || turn.role === "approval") &&
+      "sessionId" in turn &&
+      typeof turn.sessionId === "string" &&
+      turn.sessionId.length === 32
+    ) {
+      return turn.sessionId;
+    }
+  }
+  return null;
+}
 import type { AgentSessionInfo, AgentStatus, PlannedToolCall, ToolResult } from "@/lib/api/types";
 import { useState, useEffect } from "react";
 
@@ -354,11 +368,14 @@ function SessionPicker({ onSelect }: { onSelect: (id: string) => void }) {
       <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
         Recent Sessions
       </p>
-      {sessions.map((s) => (
+      {sessions.map((s) => {
+        const backendId = getBackendSessionId(s);
+        return (
         <button
           key={s.id}
-          onClick={() => onSelect(s.id)}
-          className="w-full rounded-xl border bg-card hover:border-primary/40 hover:bg-primary/5 transition-colors p-4 text-left group"
+          onClick={() => backendId && onSelect(backendId)}
+          disabled={!backendId}
+          className="w-full rounded-xl border bg-card hover:border-primary/40 hover:bg-primary/5 transition-colors p-4 text-left group disabled:opacity-40 disabled:cursor-not-allowed"
         >
           <div className="flex items-start gap-3">
             <div className={cn("h-2 w-2 rounded-full mt-1.5 shrink-0", STATUS_DOT[s.status] ?? "bg-muted")} />
@@ -382,7 +399,8 @@ function SessionPicker({ onSelect }: { onSelect: (id: string) => void }) {
             <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-1 group-hover:text-primary transition-colors" />
           </div>
         </button>
-      ))}
+        );
+      })}
     </div>
   );
 }

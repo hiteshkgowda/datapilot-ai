@@ -2,18 +2,26 @@
 
 import Link from "next/link";
 import {
+  Activity,
   AlertTriangle,
   BarChart2,
+  Bot,
   Calendar,
   Database,
   FileSpreadsheet,
   FileText,
+  GitBranch,
   Layers,
   Lightbulb,
   Rows3,
   TrendingUp,
   FileOutput,
   HardDrive,
+  LayoutDashboard,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -75,6 +83,21 @@ export function MetaPanel({ dataset }: MetaPanelProps) {
 
   const quickActions: QuickAction[] = [
     {
+      href: `/datasets/${dataset.id}/analysis`,
+      icon: Zap,
+      label: "Autonomous Analysis",
+    },
+    {
+      href: `/datasets/${dataset.id}/quality`,
+      icon: ShieldCheck,
+      label: "Data Quality",
+    },
+    {
+      href: `/datasets/${dataset.id}/monitor`,
+      icon: Activity,
+      label: "KPI Monitor",
+    },
+    {
       href: `/datasets/${dataset.id}/ask`,
       icon: BarChart2,
       label: "Ask Data",
@@ -98,6 +121,26 @@ export function MetaPanel({ dataset }: MetaPanelProps) {
       href: `/datasets/${dataset.id}/recommendations`,
       icon: Lightbulb,
       label: "Recommendations",
+    },
+    {
+      href: `/datasets/${dataset.id}/insights`,
+      icon: Sparkles,
+      label: "AI Insights",
+    },
+    {
+      href: `/datasets/${dataset.id}/root-cause`,
+      icon: Search,
+      label: "Root Cause",
+    },
+    {
+      href: `/datasets/${dataset.id}/dashboard`,
+      icon: LayoutDashboard,
+      label: "Executive Dashboard",
+    },
+    {
+      href: `/agent?dataset=${dataset.id}`,
+      icon: Bot,
+      label: "AI Agent",
     },
   ];
 

@@ -12,6 +12,8 @@
 
 import { getAuthToken, setAuthToken } from "@/lib/auth-token";
 
+export const LLM_TIMEOUT_MS = 120_000;
+
 const BASE_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, "") ??
   "http://localhost:8000";
@@ -37,7 +39,7 @@ export async function apiFetch<T>(
   options: RequestOptions = {},
   _isRetry = false
 ): Promise<T> {
-  const { body, timeoutMs = 120_000, headers: extraHeaders, ...rest } = options;
+  const { body, timeoutMs = LLM_TIMEOUT_MS, headers: extraHeaders, ...rest } = options;
 
   const headers = new Headers(extraHeaders);
   if (body !== undefined && !headers.has("Content-Type")) {

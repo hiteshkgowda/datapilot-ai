@@ -17,20 +17,17 @@ Anti-hallucination design
 
 HTTP client
 -----------
-Follows the same set_client() pattern as OllamaQueryPlanner / GroqQueryPlanner
-so the shared lifespan-managed httpx.AsyncClient is injected at startup and
-closed cleanly on shutdown.
+Inherits set_client() from LLMAgentBase. The shared lifespan-managed
+httpx.AsyncClient is injected at startup and closed cleanly on shutdown.
 """
 
 from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from typing import Any
 
-import httpx
-
-from app.core.config import Settings
+from agents._llm_base import LLMAgentBase
 from app.schemas.insight import InsightResponse, StatisticalFindings
 
 logger = logging.getLogger(__name__)
@@ -62,21 +59,13 @@ OUTPUT FORMAT — return ONLY valid JSON, no markdown, no explanation:
 }"""
 
 
-class InsightAgent:
+class InsightAgent(LLMAgentBase):
     """LLM reasoning layer — takes statistical findings, produces InsightResponse.
 
     Supports both Groq (OpenAI-compatible) and Ollama (local) with automatic
     provider selection based on Settings.  Falls back to a deterministic
     statistics-only response on any failure.
     """
-
-    def __init__(self, settings: Settings) -> None:
-        self._settings = settings
-        self._client: Optional[httpx.AsyncClient] = None
-
-    def set_client(self, client: httpx.AsyncClient) -> None:
-        """Attach the shared HTTP client.  Called once from the app lifespan."""
-        self._client = client
 
     # ------------------------------------------------------------------ #
     # Public interface
@@ -116,61 +105,8 @@ class InsightAgent:
         self, findings: StatisticalFindings, question: str
     ) -> InsightResponse:
         user_prompt = self._build_user_prompt(findings, question)
-
-        if self._settings.groq_api_key:
-            raw = await self._call_groq(user_prompt)
-        else:
-            raw = await self._call_ollama(user_prompt)
-
+        raw = await self._call_provider(_SYSTEM_PROMPT, user_prompt)
         return self._parse_response(raw, findings)
-
-    async def _call_groq(self, user_prompt: str) -> str:
-        assert self._client is not None  # guaranteed by caller
-
-        payload: dict[str, Any] = {
-            "model": self._settings.groq_model,
-            "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            "response_format": {"type": "json_object"},
-            "temperature": 0.1,
-            "max_tokens": 1024,
-        }
-
-        response = await self._client.post(
-            f"{self._settings.groq_base_url}/chat/completions",
-            json=payload,
-            headers={
-                "Authorization": f"Bearer {self._settings.groq_api_key}",
-                "Content-Type": "application/json",
-            },
-        )
-        response.raise_for_status()
-        data: dict[str, Any] = response.json()
-        return str(data["choices"][0]["message"]["content"])
-
-    async def _call_ollama(self, user_prompt: str) -> str:
-        assert self._client is not None
-
-        payload: dict[str, Any] = {
-            "model": self._settings.ollama_model,
-            "messages": [
-                {"role": "system", "content": _SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            "stream": False,
-            "format": "json",
-            "options": {"temperature": 0.1},
-        }
-
-        response = await self._client.post(
-            f"{self._settings.ollama_base_url}/api/chat",
-            json=payload,
-        )
-        response.raise_for_status()
-        data: dict[str, Any] = response.json()
-        return str(data["message"]["content"])
 
     # ------------------------------------------------------------------ #
     # Prompt construction

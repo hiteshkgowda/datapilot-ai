@@ -21,11 +21,12 @@ import asyncio
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.api.dependencies import get_dataset_service, get_insight_service, get_memory_service
 from app.core.auth import get_current_user
 from app.core.exceptions import DatasetNotFoundError
+from app.core.rate_limit import _dynamic_limit, limiter
 from app.schemas.auth import CurrentUser
 from app.schemas.insight import InsightRequest, InsightResponse
 from app.schemas.memory import TurnType
@@ -49,8 +50,10 @@ router = APIRouter(prefix="/insights", tags=["insights"])
         "hallucinate or invent data. Responses are TTL-cached."
     ),
 )
+@limiter.limit(_dynamic_limit)
 async def generate_insights(
-    request: InsightRequest,
+    request: Request,
+    body: InsightRequest,
     datasets: DatasetService = Depends(get_dataset_service),
     insight_svc: InsightGenerationService = Depends(get_insight_service),
     memory: MemoryService = Depends(get_memory_service),
@@ -63,7 +66,7 @@ async def generate_insights(
         HTTP 404: Dataset not found or not accessible by the current user.
     """
     try:
-        meta = datasets.get_metadata(request.dataset_id)
+        meta = datasets.get_metadata(body.dataset_id)
     except DatasetNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)
@@ -75,9 +78,9 @@ async def generate_insights(
         )
 
     resp = await insight_svc.generate(
-        dataset_id=request.dataset_id,
-        question=request.question,
-        table_data=request.table_data,
+        dataset_id=body.dataset_id,
+        question=body.question,
+        table_data=body.table_data,
     )
 
     if x_session_id:
@@ -86,9 +89,9 @@ async def generate_insights(
                 session_id=x_session_id,
                 user_sub=current_user.sub,
                 turn_type=TurnType.INSIGHT,
-                dataset_id=request.dataset_id,
-                question=request.question,
-                answer=resp.narrative if hasattr(resp, "narrative") else None,
+                dataset_id=body.dataset_id,
+                question=body.question,
+                answer=resp.summary,
                 insights=resp.model_dump(),
             )
         )

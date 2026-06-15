@@ -1,226 +1,113 @@
-# Universal Data Assistant
+# Universal Data Assistant — Project Brief
 
-## Project Vision
+A web app that lets people upload data and ask questions about it in plain English.
 
-Build an AI-powered Universal Data Assistant that enables non-technical users to interact with data using natural language.
-
-Users should be able to:
-
-* Upload CSV files
-* Upload Excel files
-* Connect databases
-* Ask questions in plain English
-* Generate charts
-* Generate reports
-* Generate SQL queries
-* Perform CRUD operations safely
-* Forecast future trends
+Users can:
+- Upload CSV or Excel files
+- Connect to a live database (SQLite, PostgreSQL, MySQL)
+- Ask questions and get charts, tables, and numbers back
+- Forecast time series with a real statistical model
+- Generate PDF reports
+- Run safe CRUD operations with approval and rollback
+- Use an AI agent to chain multiple analysis steps in one request
 
 ---
 
-## Development Strategy
+## Why it exists
 
-Build incrementally.
+Most people with data questions don't know SQL or Python. They need the path between "I have a spreadsheet" and "I have an answer" to be shorter. This project tries to build that shorter path without sacrificing correctness or safety.
 
-Every feature must:
-
-1. Run successfully.
-2. Be tested locally.
-3. Be committed to Git.
-
-Do not generate the entire application at once.
+The core design constraint: **the LLM never executes code or touches data directly**. It only picks an operation from a fixed allowlist. Pandas, statsmodels, and SQLAlchemy do the actual work.
 
 ---
 
-## Tech Stack
+## Tech stack
 
 ### Frontend
-
-* Streamlit (MVP)
+- Next.js 16 (App Router), React 19
+- TanStack Query v5 for data fetching
+- Framer Motion for animations
+- NextAuth.js v4 for Google OAuth
 
 ### Backend
+- FastAPI + Uvicorn
+- Pydantic v2 for all request/response schemas
+- LangGraph for the agent orchestration layer
 
-* FastAPI
+### Data processing
+- Pandas 3.0, NumPy
+- statsmodels for forecasting
+- scikit-learn for anomaly detection
 
-### Data Processing
+### Storage
+- Local filesystem (uploads, reports, connections, dashboards)
+- SQLite WAL for agent session checkpoints
 
-* Pandas
-* NumPy
+### AI
+- Groq (llama-3.1-8b) as primary LLM
+- Ollama + llama3 as fallback
 
-### Database
-
-* PostgreSQL
-
-### AI Layer
-
-* Ollama
-* Llama 3
-
-### Visualization
-
-* Plotly
-
-### Reporting
-
-* ReportLab
-
-### Future Enhancements
-
-* LangGraph
-* React Frontend
-* Authentication
-* Multi-user support
+### Visualisation / Reporting
+- Plotly (server-side spec generation)
+- ReportLab + Kaleido for PDF
 
 ---
 
-## Project Structure
+## Project structure
 
+```
 universal-data-assistant/
-
-backend/
-frontend/
-agents/
-database/
-uploads/
-reports/
-tests/
-
----
-
-## Coding Standards
-
-* Use type hints.
-* Follow clean architecture principles.
-* Add proper error handling.
-* Avoid hardcoded values.
-* Write reusable services.
-* Use environment variables for configuration.
-* Include docstrings where appropriate.
+├── backend/          # FastAPI app
+├── frontend-next/    # Next.js app
+├── tests/            # 17 test modules, 188 tests
+├── uploads/          # file uploads land here
+├── reports/          # generated PDFs
+├── connections/      # encrypted DB connection records
+├── agent_sessions/   # LangGraph checkpoint SQLite file
+└── dashboards/       # saved dashboard JSON
+```
 
 ---
 
-## Security Requirements
+## Development phases
 
-* Never use eval().
-* Validate uploaded files.
-* Sanitize database inputs.
-* Require confirmation before DELETE operations.
-* Require confirmation before destructive UPDATE operations.
-
----
-
-## MVP Features
-
-### Phase 1
-
-* Upload CSV
-* Upload Excel
-* List datasets
-* Preview datasets
-
-### Phase 2
-
-* Natural language analytics using Pandas
-
-### Phase 3
-
-* Chart generation
-
-### Phase 4
-
-* Report generation
-
-### Phase 5
-
-* Database connectivity
-
-### Phase 6
-
-* Natural language to SQL
-
-### Phase 7
-
-* CRUD operations
-
-### Phase 8
-
-* Forecasting
-
-### Phase 9
-
-* Agentic workflow using LangGraph
+| Phase | Feature | Status |
+|---|---|---|
+| 1 | File upload, list, preview | Done |
+| 2 | Natural language analytics | Done |
+| 3 | Chart generation | Done |
+| 4 | PDF report generation | Done |
+| 5 | Database connectivity | Done |
+| 6 | SQL pushdown | Done |
+| 7 | Safe CRUD | Done |
+| 8 | Forecasting + anomaly detection | Done |
+| 9 | LangGraph agent | Done |
+| 10 | Next.js frontend + auth | Done |
+| 11 | Dashboard builder | Done |
+| 12 | Data quality profiling | Done |
+| 13 | KPI monitoring | Done |
+| 14 | Agent flow visualisation | Done |
 
 ---
 
-## Claude Instructions
+## Coding standards
 
-Act as a senior software architect and engineer.
+- Use type hints throughout
+- No `eval()` anywhere — hard rule
+- All settings come from environment variables via `pydantic-settings`
+- Pydantic models for every request/response crossing a service boundary
+- No raw SQL strings — use SQLAlchemy Core with bound parameters
+- Services own business logic; routes own only HTTP handling
+- Validate uploaded files before processing
+- Require user confirmation before any destructive DB operation
 
-Generate production-quality code.
+---
 
-Output complete files.
+## Security rules
 
-Do not use placeholders.
-
-Explain architectural decisions before generating code.
-
-Maintain consistency with this PROJECT_CONTEXT.md file at all times.
-
-
-# Universal Data Assistant
-
-## Current Status
-
-Deployment:
-- Backend: Render
-- Frontend: Vercel
-
-## Completed Features
-
-### Data Layer
-- CSV Upload
-- Excel Upload
-- Database Connections
-- Query Execution
-
-### Analytics Layer
-- NL to SQL
-- Forecasting
-- Visualizations
-- Report Generation
-
-### Operations Layer
-- CRUD Operations
-- Audit Logging
-- Rollback Support
-
-### Agentic AI Layer
-- Query Planning Agent
-- SQL Generation Agent
-- Visualization Agent
-- Report Agent
-
-## Current Architecture
-
-Frontend (Next.js)
-    ↓
-Backend (FastAPI)
-    ↓
-Analytics Layer
-    ↓
-Database Layer
-
-## Upcoming Features
-
-### Tier 1
-- Insight Generation Agent
-- Root Cause Analysis Agent
-- Recommendation Agent
-- Conversational Memory
-- Anomaly Detection
-
-### Future Roadmap
-- KPI Monitoring
-- Scheduled Reports
-- Dashboard Generation
-- Data Quality Agent
+- Never use `eval()` or `exec()`
+- Validate and size-cap uploaded files
+- Database inputs go through SQLAlchemy bound parameters — no string formatting
+- Require explicit confirmation before DELETE or bulk UPDATE operations
+- Encrypt database passwords at rest with Fernet before writing to disk
+- All resources tagged with `owner_sub` from JWT at creation time; return 404 (not 403) for resources owned by others

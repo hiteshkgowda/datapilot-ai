@@ -13,7 +13,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.api.dependencies import (
     get_agent_orchestrator,
@@ -30,6 +30,7 @@ from app.core.exceptions import (
     DatasetNotFoundError,
     ValidationError,
 )
+from app.core.rate_limit import _dynamic_limit, limiter
 from app.schemas.agent import (
     AgentApproveRequest,
     AgentExplainResponse,
@@ -49,23 +50,23 @@ logger = logging.getLogger(__name__)
 
 
 def _check_resource_ownership(
-    request: AgentRunRequest,
+    body: AgentRunRequest,
     datasets: DatasetService,
     connections: ConnectionService,
     owner_sub: str,
 ) -> None:
     """Raise 404 if the caller doesn't own the dataset or connection in the request."""
-    if request.dataset_id:
+    if body.dataset_id:
         try:
-            meta = datasets.get_metadata(request.dataset_id)
+            meta = datasets.get_metadata(body.dataset_id)
         except DatasetNotFoundError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         if meta.owner_sub and meta.owner_sub != owner_sub:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found.")
 
-    if request.connection_id:
+    if body.connection_id:
         try:
-            record = connections._read_record(request.connection_id)
+            record = connections._read_record(body.connection_id)
         except ConnectionNotFoundError as exc:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
         if record.owner_sub and record.owner_sub != owner_sub:
@@ -78,8 +79,10 @@ def _check_resource_ownership(
     summary="Start a new agent session",
     status_code=status.HTTP_200_OK,
 )
+@limiter.limit(_dynamic_limit)
 async def run_agent(
-    request: AgentRunRequest,
+    request: Request,
+    body: AgentRunRequest,
     orchestrator: AgentOrchestrator = Depends(get_agent_orchestrator),
     datasets: DatasetService = Depends(get_dataset_service),
     connections: ConnectionService = Depends(get_connection_service),
@@ -93,18 +96,18 @@ async def run_agent(
     agent's conversation_history so it can resolve references like "forecast them"
     back to results from earlier in the session.
     """
-    _check_resource_ownership(request, datasets, connections, current_user.sub)
+    _check_resource_ownership(body, datasets, connections, current_user.sub)
 
     # Inject prior session context so the agent understands conversational references.
     if x_session_id:
         prior_context = await memory.build_agent_context(x_session_id, current_user.sub)
         if prior_context:
             # Prepend session history before any caller-supplied context.
-            merged_context = [item["goal"] for item in prior_context] + list(request.context)
-            request = request.model_copy(update={"context": merged_context})
+            merged_context = [item["goal"] for item in prior_context] + list(body.context)
+            body = body.model_copy(update={"context": merged_context})
 
     try:
-        resp = await orchestrator.run(request, owner_sub=current_user.sub)
+        resp = await orchestrator.run(body, owner_sub=current_user.sub)
     except AgentPlanError as exc:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc))
     except AgentExecutionError as exc:
@@ -119,8 +122,8 @@ async def run_agent(
                 session_id=x_session_id,
                 user_sub=current_user.sub,
                 turn_type=TurnType.AGENT,
-                dataset_id=request.dataset_id,
-                question=request.question,
+                dataset_id=body.dataset_id,
+                question=body.question,
                 answer=resp.final_answer,
                 metadata={"session_id": resp.session_id, "status": resp.status.value},
             )
@@ -134,15 +137,17 @@ async def run_agent(
     response_model=AgentRunResponse,
     summary="Resume a suspended agent session after CRUD approval",
 )
+@limiter.limit(_dynamic_limit)
 async def resume_agent(
+    request: Request,
     session_id: HexId,
-    request: AgentApproveRequest,
+    body: AgentApproveRequest,
     orchestrator: AgentOrchestrator = Depends(get_agent_orchestrator),
     current_user: CurrentUser = Depends(get_current_user),
 ) -> AgentRunResponse:
     """Resume a session that was paused for CRUD approval."""
     try:
-        return await orchestrator.resume(session_id, request, owner_sub=current_user.sub)
+        return await orchestrator.resume(session_id, body, owner_sub=current_user.sub)
     except ValidationError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc))
     except AgentExecutionError as exc:
@@ -155,13 +160,15 @@ async def resume_agent(
     summary="Return the execution plan without running any tools",
     dependencies=[Depends(get_current_user)],
 )
+@limiter.limit(_dynamic_limit)
 async def explain_agent(
-    request: AgentRunRequest,
+    request: Request,
+    body: AgentRunRequest,
     orchestrator: AgentOrchestrator = Depends(get_agent_orchestrator),
 ) -> AgentExplainResponse:
     """Run the planner and verifier only; no state is persisted."""
     try:
-        return await orchestrator.explain(request)
+        return await orchestrator.explain(body)
     except AgentExecutionError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
     except ValidationError as exc:

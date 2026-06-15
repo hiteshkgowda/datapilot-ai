@@ -153,8 +153,6 @@ class GroqCrudPlanner:
 
 
 class FallbackCrudPlanner:
-    """Tries the primary planner; on LLMError falls back to secondary."""
-
     def __init__(self, primary: Any, secondary: Any) -> None:
         self._primary = primary
         self._secondary = secondary

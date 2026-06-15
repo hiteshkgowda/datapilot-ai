@@ -520,7 +520,7 @@ class RootCauseService:
             response = await self._agent.generate(findings=findings, question=question)
         except Exception as exc:
             logger.error("RootCauseService: analysis failed: %s", exc)
-            response = _error_response(str(exc))
+            response = _empty_response(str(exc))
 
         elapsed_ms = round((time.perf_counter() - start) * 1000, 3)
         result = response.model_copy(
@@ -578,7 +578,7 @@ def _looks_like_dates(sample: "pd.Series[Any]") -> bool:
     return success >= len(sample) * 0.8
 
 
-def _error_response(message: str) -> RootCauseResponse:
+def _empty_response(message: str) -> RootCauseResponse:
     return RootCauseResponse(
         problem=f"Analysis could not be completed: {message}",
         root_causes=[],

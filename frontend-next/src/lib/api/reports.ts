@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, LLM_TIMEOUT_MS } from "./client";
 import type { ReportListResponse, ReportMetadata } from "./types";
 
 const PREFIX = "/api/v1/reports";
@@ -8,7 +8,7 @@ export async function generateReport(
   datasetId: string,
   questions: string[]
 ): Promise<ReportMetadata> {
-  return api.post<ReportMetadata>(PREFIX, { dataset_id: datasetId, questions }, { timeoutMs: 120_000 });
+  return api.post<ReportMetadata>(PREFIX, { dataset_id: datasetId, questions }, { timeoutMs: LLM_TIMEOUT_MS });
 }
 
 export async function listReports(): Promise<ReportListResponse> {

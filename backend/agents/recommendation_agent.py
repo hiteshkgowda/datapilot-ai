@@ -22,6 +22,7 @@ from typing import Any, Optional
 import httpx
 
 from app.core.config import Settings
+from app.core.math_utils import strip_json_fences
 from app.schemas.recommendation import Recommendation
 
 logger = logging.getLogger(__name__)
@@ -127,7 +128,7 @@ class RecommendationAgent:
     async def _call_groq(self, user_prompt: str) -> Optional[str]:
         try:
             resp = await self._client.post(
-                "https://api.groq.com/openai/v1/chat/completions",
+                f"{self._settings.groq_base_url}/chat/completions",
                 headers={
                     "Authorization": f"Bearer {self._settings.groq_api_key}",
                     "Content-Type": "application/json",
@@ -183,15 +184,7 @@ class RecommendationAgent:
     ) -> Optional[list[Recommendation]]:
         """Parse LLM JSON output and fall back to originals on any error."""
         try:
-            # Strip possible markdown fences.
-            text = raw.strip()
-            if text.startswith("```"):
-                text = text.split("```", 2)[1]
-                if text.startswith("json"):
-                    text = text[4:]
-            if text.endswith("```"):
-                text = text[:-3]
-            text = text.strip()
+            text = strip_json_fences(raw)
 
             parsed: list[dict[str, Any]] = json.loads(text)
             if not isinstance(parsed, list):

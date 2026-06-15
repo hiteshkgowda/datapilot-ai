@@ -23,6 +23,7 @@ _STORAGE_FIELDS: tuple[str, ...] = (
     "crud_rollback_dir",
     "agent_sessions_dir",
     "memory_store_dir",
+    "dashboards_dir",
 )
 
 
@@ -102,6 +103,9 @@ class Settings(BaseSettings):
 
     # Conversational memory store (conversations.db lives here).
     memory_store_dir: Path = Path("memory_store")
+
+    # AI Executive Dashboard Generator — saved dashboard JSON files.
+    dashboards_dir: Path = Path("dashboards")
 
     # Frontend / CORS
     # In development, localhost:3000 is always allowed.
@@ -256,6 +260,13 @@ class Settings(BaseSettings):
     memory_max_turns_per_session: int = 20
     # Maximum table_data rows stored per turn (prevents unbounded payload growth).
     memory_max_table_rows: int = 50
+
+    # ------------------------------------------------------------------ #
+    # ------------------------------------------------------------------ #
+    # AI Executive Dashboard Generator
+    # ------------------------------------------------------------------ #
+    dashboard_cache_ttl_seconds: float = 300.0
+    dashboard_cache_max_entries: int = 30
 
     # ------------------------------------------------------------------ #
     # AI Insight Generation Engine

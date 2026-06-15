@@ -1,12 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { Bot } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Bot, GitBranch } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AgentGoalInput } from "./AgentGoalInput";
 import { AgentSessionList } from "./AgentSessionList";
 import { AgentThread } from "./AgentThread";
 import { AgentTimeline } from "./AgentTimeline";
+import { AgentFlowViz } from "./AgentFlowViz";
 import { useAgentExplain, useAgentResume, useAgentRun } from "@/hooks/use-agent";
 import {
   loadSessions,
@@ -14,9 +15,10 @@ import {
   uid,
   type AgentContext,
   type AgentConversationTurn,
+  type AgentExplainTurn,
   type StoredSession,
 } from "./types";
-import type { AgentStatus } from "@/lib/api/types";
+import type { AgentStatus, PlannedToolCall } from "@/lib/api/types";
 import type { ToolResult } from "@/lib/api/types";
 
 // ── Status indicator config ───────────────────────────────────────────────────
@@ -59,6 +61,7 @@ export function AgentWorkspace() {
   const [sessions, setSessions] = useState<StoredSession[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [prefill, setPrefill] = useState<string | undefined>();
+  const [showFlowViz, setShowFlowViz] = useState(false);
 
   useEffect(() => {
     const loaded = loadSessions();
@@ -310,6 +313,14 @@ export function AgentWorkspace() {
 
   const timelineSteps: ToolResult[] = activeSession?.completedSteps ?? [];
 
+  const latestPlannedSteps: PlannedToolCall[] | undefined = useMemo(() => {
+    if (!activeSession) return undefined;
+    const explainTurn = [...activeSession.turns]
+      .reverse()
+      .find((t): t is AgentExplainTurn => t.role === "explain");
+    return explainTurn?.explain.plan;
+  }, [activeSession]);
+
   const isPending =
     runMutation.isPending ||
     resumeMutation.isPending ||
@@ -321,7 +332,19 @@ export function AgentWorkspace() {
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
+  const hasFlowData =
+    timelineSteps.length > 0 || (latestPlannedSteps?.length ?? 0) > 0;
+
   return (
+    <>
+      {showFlowViz && (
+        <AgentFlowViz
+          steps={timelineSteps}
+          plannedSteps={latestPlannedSteps}
+          onClose={() => setShowFlowViz(false)}
+        />
+      )}
+
     <div className="flex h-full min-h-0">
       {/* ── Left: session list ─────────────────────────────────────── */}
       <aside className="w-64 shrink-0 border-r border-border/60 overflow-hidden flex flex-col bg-sidebar">
@@ -354,17 +377,29 @@ export function AgentWorkspace() {
             </span>
           </div>
 
-          {activeSession && (
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span
-                className={cn(STATUS_DOT[activeSession.status])}
-                aria-hidden="true"
-              />
-              <span className="text-xs text-muted-foreground/60">
-                {STATUS_LABEL[activeSession.status]}
-              </span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 shrink-0">
+            {hasFlowData && (
+              <button
+                onClick={() => setShowFlowViz(true)}
+                className="flex items-center gap-1.5 rounded-lg border border-border/40 bg-muted/20 px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                title="View workflow graph"
+              >
+                <GitBranch className="h-3 w-3" />
+                Graph
+              </button>
+            )}
+            {activeSession && (
+              <div className="flex items-center gap-1.5">
+                <span
+                  className={cn(STATUS_DOT[activeSession.status])}
+                  aria-hidden="true"
+                />
+                <span className="text-xs text-muted-foreground/60">
+                  {STATUS_LABEL[activeSession.status]}
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Thread — self-contained with scroll */}
@@ -392,5 +427,6 @@ export function AgentWorkspace() {
         <AgentTimeline steps={timelineSteps} isPending={isPending} />
       </aside>
     </div>
+    </>
   );
 }

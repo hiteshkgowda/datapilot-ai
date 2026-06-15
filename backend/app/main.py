@@ -14,11 +14,15 @@ from typing import Any, AsyncIterator
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi.errors import RateLimitExceeded
+
+from app.core.rate_limit import limiter, rate_limit_exceeded_handler
 
 from app.api.dependencies import (
     get_agent_orchestrator,
     get_connection_service,
     get_crud_service,
+    get_dashboard_service,
     get_forecast_planner,
     get_insight_service,
     get_memory_service,
@@ -33,7 +37,10 @@ from app.api.routes import (
     chart,
     connections,
     crud,
+    dashboards,
+    data_quality,
     datasets,
+    kpi_monitor,
     forecast,
     insights,
     memory,
@@ -203,6 +210,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         _rec_agent = get_recommendation_service()._agent
         if hasattr(_rec_agent, "set_client"):
             _rec_agent.set_client(client)
+        # Wire the shared client into the DashboardGeneratorService so it can
+        # make optional LLM calls for dashboard naming and recommendations.
+        _dash_svc = get_dashboard_service()
+        if hasattr(_dash_svc, "set_client"):
+            _dash_svc.set_client(client)
         # Initialise the conversational memory SQLite store (creates tables / WAL).
         _mem_svc = get_memory_service()
         await _mem_svc._store.initialize()
@@ -240,6 +252,9 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+
     app.include_router(datasets.router, prefix=API_PREFIX)
     app.include_router(query.router, prefix=API_PREFIX)
     app.include_router(chart.router, prefix=API_PREFIX)
@@ -253,6 +268,9 @@ def create_app() -> FastAPI:
     app.include_router(anomalies.router, prefix=API_PREFIX)
     app.include_router(recommendations.router, prefix=API_PREFIX)
     app.include_router(memory.router, prefix=API_PREFIX)
+    app.include_router(dashboards.router, prefix=API_PREFIX)
+    app.include_router(data_quality.router, prefix=API_PREFIX)
+    app.include_router(kpi_monitor.router, prefix=API_PREFIX)
 
     @app.get("/health", tags=["health"], summary="Service health check")
     def health() -> dict[str, Any]:

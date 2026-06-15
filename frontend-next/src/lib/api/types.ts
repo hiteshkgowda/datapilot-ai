@@ -8,6 +8,12 @@
  */
 
 // ---------------------------------------------------------------------------
+// Shared primitives
+// ---------------------------------------------------------------------------
+
+export type Severity = "critical" | "high" | "medium" | "low";
+
+// ---------------------------------------------------------------------------
 // Datasets
 // ---------------------------------------------------------------------------
 
@@ -245,7 +251,7 @@ export interface AnomalyResponse {
 // Recommendation Engine
 // ---------------------------------------------------------------------------
 
-export type RecommendationPriority = "critical" | "high" | "medium" | "low";
+export type RecommendationPriority = Severity;
 export type RecommendationCategory =
   | "revenue"
   | "operations"
@@ -484,4 +490,347 @@ export interface AgentSessionInfo {
   pending_approval: PendingApproval | null;
   final_answer: string | null;
   error: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Insight Generation
+// ---------------------------------------------------------------------------
+
+export interface InsightRequest {
+  dataset_id: string;
+  question: string;
+  table_data?: Record<string, unknown>[];
+}
+
+export interface InsightResponse {
+  summary: string;
+  key_insights: string[];
+  trends: string[];
+  recommendations: string[];
+  cache_hit: boolean;
+  generation_time_ms: number;
+}
+
+// ---------------------------------------------------------------------------
+// Root Cause Analysis
+// ---------------------------------------------------------------------------
+
+export interface RootCauseRequest {
+  dataset_id: string;
+  question: string;
+  metric_column?: string | null;
+  period_column?: string | null;
+  current_period?: string | null;
+  previous_period?: string | null;
+}
+
+export interface RootCause {
+  dimension: string;
+  value: string;
+  impact_level: "high" | "medium" | "low";
+  description: string;
+  contribution_pct: number;
+  rank: number;
+}
+
+export interface ContributionFactor {
+  dimension: string;
+  value: string;
+  current_value: number;
+  previous_value: number;
+  absolute_change: number;
+  percentage_change: number;
+  contribution_pct: number;
+  rank: number;
+}
+
+export interface RootCauseResponse {
+  problem: string;
+  root_causes: RootCause[];
+  contribution_analysis: ContributionFactor[];
+  recommendations: string[];
+  metric_column: string;
+  period_column: string | null;
+  current_period: string | null;
+  previous_period: string | null;
+  current_total: number;
+  previous_total: number;
+  total_change_pct: number;
+  analysis_time_ms: number;
+  cache_hit: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Conversational Memory
+// ---------------------------------------------------------------------------
+
+export type TurnType =
+  | "query"
+  | "chart"
+  | "forecast"
+  | "anomaly"
+  | "insight"
+  | "recommendation"
+  | "report"
+  | "agent";
+
+export interface ConversationTurn {
+  turn_id: string;
+  session_id: string;
+  user_sub: string;
+  created_at: string;
+  turn_type: TurnType;
+  dataset_id: string | null;
+  question: string | null;
+  answer: string | null;
+  table_data: Record<string, unknown>[] | null;
+  chart_spec: Record<string, unknown> | null;
+  insights: Record<string, unknown> | null;
+  anomalies: Record<string, unknown> | null;
+  forecast: Record<string, unknown> | null;
+  recommendations: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+}
+
+export interface ConversationContext {
+  session_id: string;
+  turn_count: number;
+  turns: ConversationTurn[];
+  summary: string;
+  datasets_referenced: string[];
+  last_dataset_id: string | null;
+}
+
+export interface MemoryClearResponse {
+  session_id: string;
+  turns_cleared: number;
+  message: string;
+}
+
+// ---------------------------------------------------------------------------
+// KPI Monitor
+// ---------------------------------------------------------------------------
+
+export type KPIHealth = "healthy" | "warning" | "critical" | "unknown";
+export type KPITrend = "up" | "down" | "flat";
+export type KPIAlertSeverity = Severity;
+export type KPIPriority = Severity;
+
+export interface KPIAlert {
+  severity: KPIAlertSeverity;
+  kpi_name: string;
+  message: string;
+  value: number;
+  threshold: number;
+  row_index: number;
+  label: string | null;
+}
+
+export interface KPIStat {
+  column: string;
+  label: string;
+  current_value: number;
+  formatted_value: string;
+  mean: number;
+  std: number;
+  min_value: number;
+  max_value: number;
+  p25: number;
+  p75: number;
+  change_pct: number | null;
+  trend: KPITrend;
+  health: KPIHealth;
+  alert_count: number;
+  sparkline: number[];
+  chart_spec: Record<string, unknown> | null;
+}
+
+export interface KPIRecommendation {
+  priority: KPIPriority;
+  kpi: string;
+  issue: string;
+  action: string;
+}
+
+export interface KPIMonitorResponse {
+  dataset_id: string;
+  overall_health: KPIHealth;
+  healthy_count: number;
+  warning_count: number;
+  critical_count: number;
+  kpis: KPIStat[];
+  alerts: KPIAlert[];
+  recommendations: KPIRecommendation[];
+  time_column: string | null;
+  row_count: number;
+  analysis_time_ms: number;
+  cache_hit: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Data Quality
+// ---------------------------------------------------------------------------
+
+export interface ColumnQuality {
+  name: string;
+  dtype: string;
+  health_score: number;
+  missing_count: number;
+  missing_pct: number;
+  unique_count: number;
+  unique_pct: number;
+  outlier_count: number;
+  outlier_pct: number;
+  mean: number | null;
+  std: number | null;
+  col_min: number | null;
+  col_max: number | null;
+  q1: number | null;
+  q3: number | null;
+  issues: string[];
+}
+
+export interface DuplicateInfo {
+  duplicate_row_count: number;
+  duplicate_pct: number;
+}
+
+export interface MissingValueSummary {
+  total_missing: number;
+  total_missing_pct: number;
+  columns_with_missing: number;
+  chart_spec: Record<string, unknown> | null;
+}
+
+export interface OutlierSummary {
+  total_outlier_count: number;
+  columns_with_outliers: number;
+  chart_spec: Record<string, unknown> | null;
+}
+
+export interface QualityDimensions {
+  completeness: number;
+  uniqueness: number;
+  validity: number;
+  consistency: number;
+}
+
+export type QualityGrade = "A" | "B" | "C" | "D" | "F";
+export type QualityPriority = Severity;
+
+export interface DataQualityRecommendation {
+  priority: QualityPriority;
+  issue: string;
+  action: string;
+  affected_columns: string[];
+}
+
+export interface DataQualityResponse {
+  dataset_id: string;
+  overall_score: number;
+  grade: QualityGrade;
+  dimensions: QualityDimensions;
+  columns: ColumnQuality[];
+  duplicates: DuplicateInfo;
+  missing_summary: MissingValueSummary;
+  outlier_summary: OutlierSummary;
+  recommendations: DataQualityRecommendation[];
+  row_count: number;
+  column_count: number;
+  analysis_time_ms: number;
+  cache_hit: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Dashboards
+// ---------------------------------------------------------------------------
+
+export interface KPIMetric {
+  id: string;
+  label: string;
+  column: string;
+  aggregation: string;
+  value: number;
+  formatted_value: string;
+  change_pct: number | null;
+  trend: "up" | "down" | "flat";
+}
+
+export interface ChartPanel {
+  id: string;
+  title: string;
+  chart_type: "line" | "bar" | "scatter";
+  x_field: string;
+  y_field: string;
+  chart_spec: Record<string, unknown>;
+  width: "half" | "full";
+}
+
+export interface LayoutCell {
+  id: string;
+  width: "half" | "full";
+}
+
+export interface LayoutConfig {
+  kpi_row: string[];
+  rows: LayoutCell[][];
+}
+
+export interface GenerateDashboardRequest {
+  dataset_id: string;
+  prompt?: string;
+  max_kpis?: number;
+  max_charts?: number;
+}
+
+export interface GenerateDashboardResponse {
+  dashboard_name: string;
+  dataset_id: string;
+  kpis: KPIMetric[];
+  charts: ChartPanel[];
+  layout: LayoutConfig;
+  recommendations: string[];
+  score: number;
+  generation_time_ms: number;
+  cache_hit: boolean;
+}
+
+export interface DashboardConfig {
+  dashboard_id: string | null;
+  dashboard_name: string;
+  dataset_id: string;
+  owner_sub: string;
+  kpis: KPIMetric[];
+  charts: ChartPanel[];
+  layout: LayoutConfig;
+  recommendations: string[];
+  score: number;
+  generation_time_ms: number;
+  cache_hit: boolean;
+  created_at: string;
+}
+
+export interface DashboardMetadata {
+  dashboard_id: string;
+  dashboard_name: string;
+  dataset_id: string;
+  score: number;
+  created_at: string;
+}
+
+export interface SaveDashboardRequest {
+  dashboard_config: DashboardConfig;
+  dashboard_name?: string;
+}
+
+export interface SaveDashboardResponse {
+  dashboard_id: string;
+  dashboard_name: string;
+  created_at: string;
+  message: string;
+}
+
+export interface DashboardListResponse {
+  count: number;
+  dashboards: DashboardMetadata[];
 }

@@ -159,52 +159,37 @@ class GroqForecastPlanner:
 
 
 # ---------------------------------------------------------------------------
-# Fallback wrappers
+# Fallback wrapper base
 # ---------------------------------------------------------------------------
 
-class FallbackQueryPlanner:
-    """Calls primary; on LLMError logs a warning and delegates to secondary."""
+class _Fallback:
+    """Tries the primary planner; on LLMError falls back to secondary.
+
+    Subclasses just implement the protocol method and delegate via _try().
+    """
 
     def __init__(self, primary: Any, secondary: Any) -> None:
         self._primary = primary
         self._secondary = secondary
 
     def set_client(self, client: httpx.AsyncClient) -> None:
-        for planner in (self._primary, self._secondary):
-            if hasattr(planner, "set_client"):
-                planner.set_client(client)
+        for p in (self._primary, self._secondary):
+            if hasattr(p, "set_client"):
+                p.set_client(client)
 
-    async def generate_plan(
-        self, question: str, schema: dict[str, str]
-    ) -> dict[str, Any]:
+    async def _try(self, method: str, *args: Any) -> dict[str, Any]:
         try:
-            return await self._primary.generate_plan(question, schema)
+            return await getattr(self._primary, method)(*args)
         except LLMError as exc:
-            logger.warning(
-                "Primary query planner failed (%s); falling back to secondary.", exc
-            )
-            return await self._secondary.generate_plan(question, schema)
+            logger.warning("Primary planner failed (%s); falling back to secondary.", exc)
+            return await getattr(self._secondary, method)(*args)
 
 
-class FallbackForecastPlanner:
-    """Calls primary; on LLMError logs a warning and delegates to secondary."""
+class FallbackQueryPlanner(_Fallback):
+    async def generate_plan(self, question: str, schema: dict[str, str]) -> dict[str, Any]:
+        return await self._try("generate_plan", question, schema)
 
-    def __init__(self, primary: Any, secondary: Any) -> None:
-        self._primary = primary
-        self._secondary = secondary
 
-    def set_client(self, client: httpx.AsyncClient) -> None:
-        for planner in (self._primary, self._secondary):
-            if hasattr(planner, "set_client"):
-                planner.set_client(client)
-
-    async def generate_forecast_plan(
-        self, question: str, schema: dict[str, str]
-    ) -> dict[str, Any]:
-        try:
-            return await self._primary.generate_forecast_plan(question, schema)
-        except LLMError as exc:
-            logger.warning(
-                "Primary forecast planner failed (%s); falling back to secondary.", exc
-            )
-            return await self._secondary.generate_forecast_plan(question, schema)
+class FallbackForecastPlanner(_Fallback):
+    async def generate_forecast_plan(self, question: str, schema: dict[str, str]) -> dict[str, Any]:
+        return await self._try("generate_forecast_plan", question, schema)

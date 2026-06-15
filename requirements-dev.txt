@@ -1,2 +1,4 @@
 # Development / test dependencies (install in addition to requirements.txt)
 pytest>=8.0.0
+pytest-asyncio>=0.23.0          # @pytest.mark.asyncio for async test methods (test_memory_system.py)
+httpx>=0.27.0                   # TestClient transport; duplicates runtime dep but makes dev install self-contained

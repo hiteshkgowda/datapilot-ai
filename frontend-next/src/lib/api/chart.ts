@@ -1,4 +1,4 @@
-import { api } from "./client";
+import { api, LLM_TIMEOUT_MS } from "./client";
 import type { ChartResponse } from "./types";
 
 const PREFIX = "/api/v1";
@@ -10,7 +10,6 @@ export interface AskRequest {
 
 export async function askQuestion(request: AskRequest): Promise<ChartResponse> {
   return api.post<ChartResponse>(`${PREFIX}/chart`, request, {
-    // LLM-backed: allow up to 120 s before timing out
-    timeoutMs: 120_000,
+    timeoutMs: LLM_TIMEOUT_MS,
   });
 }

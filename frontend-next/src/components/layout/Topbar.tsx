@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useHealth } from "@/hooks/use-health";
 import { useCommandPalette } from "@/providers/CommandPaletteProvider";
+import { MemoryContextIndicator } from "@/components/memory/MemoryContextIndicator";
 
 // ── Page title map ────────────────────────────────────────────────────────────
 
@@ -20,6 +21,11 @@ function getPageTitle(pathname: string): string {
   if (pathname === "/settings") return "Settings";
   if (pathname.includes("/ask")) return "Analytics";
   if (pathname.includes("/forecast")) return "Forecasting";
+  if (pathname.includes("/dashboard")) return "Executive Dashboard";
+  if (pathname.includes("/insights")) return "AI Insights";
+  if (pathname.includes("/root-cause")) return "Root Cause Analysis";
+  if (pathname.includes("/anomalies")) return "Anomaly Detection";
+  if (pathname.includes("/recommendations")) return "Recommendations";
   if (pathname.startsWith("/datasets/") && pathname.endsWith("/reports")) return "Reports";
   if (pathname.startsWith("/datasets/")) return "Dataset";
   return "Universal Data Assistant";
@@ -168,6 +174,8 @@ export function Topbar() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-1 shrink-0">
+        <MemoryContextIndicator />
+        <div className="w-px h-4 bg-border/60 mx-1" aria-hidden="true" />
         <SystemStatus />
         <div className="w-px h-4 bg-border/60 mx-1" aria-hidden="true" />
         <NotificationButton />

@@ -6,7 +6,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.api.dependencies import (
     get_analytics_service,
@@ -21,6 +21,7 @@ from app.core.exceptions import (
     ParseError,
     PlanValidationError,
 )
+from app.core.rate_limit import _dynamic_limit, limiter
 from app.schemas.auth import CurrentUser
 from app.schemas.memory import TurnType
 from app.schemas.query import QueryRequest, QueryResponse
@@ -39,8 +40,10 @@ router = APIRouter(prefix="/query", tags=["query"])
     response_model=QueryResponse,
     summary="Ask a natural-language question about a dataset",
 )
+@limiter.limit(_dynamic_limit)
 async def run_query(
-    request: QueryRequest,
+    request: Request,
+    body: QueryRequest,
     service: AnalyticsService = Depends(get_analytics_service),
     datasets: DatasetService = Depends(get_dataset_service),
     insight_svc: InsightGenerationService = Depends(get_insight_service),
@@ -49,7 +52,7 @@ async def run_query(
     x_session_id: Optional[str] = Header(None, alias="X-Session-Id"),
 ) -> QueryResponse:
     try:
-        meta = datasets.get_metadata(request.dataset_id)
+        meta = datasets.get_metadata(body.dataset_id)
     except DatasetNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -57,7 +60,7 @@ async def run_query(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found.")
 
     try:
-        analysis = await service.analyze(request.dataset_id, request.question)
+        analysis = await service.analyze(body.dataset_id, body.question)
     except DatasetNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except PlanValidationError as exc:
@@ -75,11 +78,11 @@ async def run_query(
         total_time_ms=analysis.total_time_ms,
     )
 
-    if request.include_insights and analysis.result.table:
+    if body.include_insights and analysis.result.table:
         try:
             insights = await insight_svc.generate(
-                dataset_id=request.dataset_id,
-                question=request.question,
+                dataset_id=body.dataset_id,
+                question=body.question,
                 table_data=analysis.result.table,
             )
             response = response.model_copy(update={"insights": insights})
@@ -93,8 +96,8 @@ async def run_query(
                 session_id=x_session_id,
                 user_sub=current_user.sub,
                 turn_type=TurnType.QUERY,
-                dataset_id=request.dataset_id,
-                question=request.question,
+                dataset_id=body.dataset_id,
+                question=body.question,
                 answer=analysis.result.answer,
                 table_data=table,
             )

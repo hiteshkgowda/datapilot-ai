@@ -17,6 +17,7 @@ python-dotenv>=1.0.1
 pandas>=2.2.0
 numpy>=2.1.0
 openpyxl>=3.1.5                 # Excel (.xlsx) engine for pandas
+scikit-learn>=1.4.0             # Isolation Forest anomaly detection
 
 # --- Database connectivity ---
 SQLAlchemy>=2.0.0
@@ -37,6 +38,9 @@ kaleido>=0.2.1                  # static image export of Plotly figures (PDF cha
 
 # --- Authentication (Phase A1) ---
 PyJWT>=2.9.0                    # HS256 JWT verification for NextAuth backend tokens
+
+# --- Rate limiting ---
+slowapi>=0.1.9                  # ASGI rate limiting: 100 req/hr authenticated, 20 req/hr anonymous
 
 # --- Agent orchestration ---
 langgraph>=1.0.0                # LangGraph state machine for agent orchestration

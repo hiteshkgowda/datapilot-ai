@@ -20,6 +20,7 @@ import httpx
 
 from app.core.config import Settings
 from app.core.exceptions import LLMError
+from app.core.math_utils import strip_json_fences as _strip_fences
 
 logger = logging.getLogger(__name__)
 
@@ -159,15 +160,6 @@ def _build_replan_prompt(
 # ---------------------------------------------------------------------------
 # Output parsers
 # ---------------------------------------------------------------------------
-
-def _strip_fences(content: str) -> str:
-    content = content.strip()
-    if content.startswith("```"):
-        parts = content.split("```")
-        content = parts[1] if len(parts) > 1 else content
-        if content.startswith("json"):
-            content = content[4:]
-    return content.strip()
 
 
 def _extract_steps(parsed: dict[str, Any], source: str) -> list[dict[str, Any]]:

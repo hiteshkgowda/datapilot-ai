@@ -10,6 +10,7 @@ import {
   ChevronRight,
   Database,
   FileText,
+  Home,
   LayoutDashboard,
   Link2,
   PenLine,
@@ -36,13 +37,16 @@ const navGroups: NavGroup[] = [
   {
     label: "Workspace",
     items: [
-      { href: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
+      { href: "/", label: "Home", icon: Home, exact: true },
       { href: "/datasets", label: "Datasets", icon: Database },
     ],
   },
   {
     label: "Analysis",
-    items: [{ href: "/reports", label: "Reports", icon: FileText }],
+    items: [
+      { href: "/dashboards", label: "Dashboards", icon: LayoutDashboard },
+      { href: "/reports", label: "Reports", icon: FileText },
+    ],
   },
   {
     label: "Operations",

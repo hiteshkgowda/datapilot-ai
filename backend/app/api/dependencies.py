@@ -84,6 +84,9 @@ from app.services.groq_provider import (
 )
 from app.services.llm_provider import OllamaQueryPlanner, QueryPlanner
 from app.services.anomaly_service import AnomalyDetectionService
+from app.services.dashboard_generator import DashboardGeneratorService
+from app.services.data_quality_service import DataQualityService
+from app.services.kpi_monitor_service import KPIMonitorService
 from app.services.insight_service import InsightGenerationService
 from app.services.memory_service import MemoryService
 from app.services.recommendation_service import RecommendationService
@@ -144,14 +147,12 @@ def _make_forecast_planner(settings: Settings) -> ForecastPlanner:
 
 @lru_cache(maxsize=1)
 def get_connection_service() -> ConnectionService:
-    """Provide a process-wide :class:`ConnectionService` instance."""
     settings = get_settings()
     return ConnectionService(settings, CredentialCipher(settings.db_encryption_key))
 
 
 @lru_cache(maxsize=1)
 def get_dataset_service() -> DatasetService:
-    """Provide a process-wide :class:`DatasetService` instance."""
     return DatasetService(get_settings(), get_connection_service())
 
 
@@ -163,13 +164,11 @@ def get_query_planner() -> QueryPlanner:
 
 @lru_cache(maxsize=1)
 def get_sql_executor() -> SqlExecutor:
-    """Provide a process-wide :class:`SqlExecutor` for SQL pushdown."""
     return SqlExecutor(get_connection_service(), SQLTranslator())
 
 
 @lru_cache(maxsize=1)
 def get_analytics_service() -> AnalyticsService:
-    """Provide a process-wide :class:`AnalyticsService` instance."""
     settings = get_settings()
     return AnalyticsService(
         get_dataset_service(),
@@ -182,7 +181,6 @@ def get_analytics_service() -> AnalyticsService:
 
 @lru_cache(maxsize=1)
 def get_visualization_service() -> VisualizationService:
-    """Provide a process-wide :class:`VisualizationService` instance."""
     return VisualizationService(get_analytics_service())
 
 
@@ -194,7 +192,6 @@ def get_forecast_planner() -> ForecastPlanner:
 
 @lru_cache(maxsize=1)
 def get_forecast_service() -> ForecastService:
-    """Provide a process-wide :class:`ForecastService` instance."""
     return ForecastService(
         get_dataset_service(), get_forecast_planner(), get_settings()
     )
@@ -202,7 +199,6 @@ def get_forecast_service() -> ForecastService:
 
 @lru_cache(maxsize=1)
 def get_crud_service() -> CrudService:
-    """Provide a process-wide :class:`CrudService` instance."""
     settings = get_settings()
     token_svc = ConfirmationTokenService(
         secret_key=settings.crud_secret_key,
@@ -237,7 +233,6 @@ def _make_agent_planner(settings: Settings) -> Any:
 
 @lru_cache(maxsize=1)
 def get_agent_orchestrator() -> AgentOrchestrator:
-    """Provide a process-wide :class:`AgentOrchestrator` instance."""
     settings = get_settings()
     planner = _make_agent_planner(settings)
     registry = build_registry(
@@ -262,7 +257,6 @@ def get_agent_orchestrator() -> AgentOrchestrator:
 
 @lru_cache(maxsize=1)
 def get_anomaly_service() -> AnomalyDetectionService:
-    """Provide a process-wide :class:`AnomalyDetectionService` instance."""
     settings = get_settings()
     return AnomalyDetectionService(
         cache_ttl=settings.anomaly_cache_ttl_seconds,
@@ -271,8 +265,17 @@ def get_anomaly_service() -> AnomalyDetectionService:
 
 
 @lru_cache(maxsize=1)
+def get_data_quality_service() -> DataQualityService:
+    return DataQualityService(cache_ttl=3600, cache_max_entries=64)
+
+
+@lru_cache(maxsize=1)
+def get_kpi_monitor_service() -> KPIMonitorService:
+    return KPIMonitorService(cache_ttl=3600, cache_max_entries=64)
+
+
+@lru_cache(maxsize=1)
 def get_root_cause_service() -> RootCauseService:
-    """Provide a process-wide :class:`RootCauseService` instance."""
     from agents.root_cause_agent import RootCauseAgent  # local import — agents/ pkg lives outside app/
 
     settings = get_settings()
@@ -286,7 +289,6 @@ def get_root_cause_service() -> RootCauseService:
 
 @lru_cache(maxsize=1)
 def get_memory_service() -> MemoryService:
-    """Provide a process-wide :class:`MemoryService` instance."""
     from memory.conversation_store import ConversationStore  # noqa: PLC0415
     from memory.session_memory import SessionMemory  # noqa: PLC0415
     from memory.context_builder import ContextBuilder  # noqa: PLC0415
@@ -311,7 +313,6 @@ def get_memory_service() -> MemoryService:
 
 @lru_cache(maxsize=1)
 def get_recommendation_service() -> RecommendationService:
-    """Provide a process-wide :class:`RecommendationService` instance."""
     from agents.recommendation_agent import RecommendationAgent  # local import — avoids circular
 
     settings = get_settings()
@@ -324,8 +325,23 @@ def get_recommendation_service() -> RecommendationService:
 
 
 @lru_cache(maxsize=1)
+def get_dashboard_service() -> DashboardGeneratorService:
+    from app.services.dashboard_store import DashboardStore  # noqa: PLC0415
+
+    settings = get_settings()
+    store = DashboardStore(settings.dashboards_dir)
+    svc = DashboardGeneratorService(
+        dataset_service=get_dataset_service(),
+        settings=settings,
+        cache_ttl=settings.dashboard_cache_ttl_seconds,
+        cache_max_entries=settings.dashboard_cache_max_entries,
+    )
+    svc._store = store  # attach store so routes can access it
+    return svc
+
+
+@lru_cache(maxsize=1)
 def get_insight_service() -> InsightGenerationService:
-    """Provide a process-wide :class:`InsightGenerationService` instance."""
     from agents.insight_agent import InsightAgent  # local import — agents/ pkg lives outside app/
 
     settings = get_settings()
@@ -342,7 +358,6 @@ def get_insight_service() -> InsightGenerationService:
 
 @lru_cache(maxsize=1)
 def get_report_service() -> ReportService:
-    """Provide a process-wide :class:`ReportService` instance."""
     settings = get_settings()
     forecast_config = ReportForecastConfig(
         enabled=settings.forecast_in_reports,

@@ -22,6 +22,7 @@ import numpy as np
 import pandas as pd
 
 from app.core.cache import TTLCache
+from app.core.math_utils import safe_float as _safe_float
 from app.schemas.insight import (
     ColumnStats,
     CorrelationInfo,
@@ -477,19 +478,6 @@ def _build_cache_key(
         table_str = repr(table_data)
     raw = f"{dataset_id}\x00{question.strip().lower()}\x00{table_str}"
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
-
-
-def _safe_float(val: Any) -> Optional[float]:
-    """Return a JSON-safe float, or None for NaN/Inf/None."""
-    if val is None:
-        return None
-    try:
-        f = float(val)
-        if np.isnan(f) or np.isinf(f):
-            return None
-        return round(f, 6)
-    except (TypeError, ValueError):
-        return None
 
 
 def _empty_response(message: str) -> InsightResponse:

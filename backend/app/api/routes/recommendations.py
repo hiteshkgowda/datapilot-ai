@@ -6,11 +6,12 @@ import asyncio
 import logging
 from typing import Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 
 from app.api.dependencies import get_dataset_service, get_memory_service, get_recommendation_service
 from app.core.auth import get_current_user
 from app.core.exceptions import DatasetNotFoundError, RecommendationError
+from app.core.rate_limit import _dynamic_limit, limiter
 from app.schemas.auth import CurrentUser
 from app.schemas.memory import TurnType
 from app.schemas.recommendation import RecommendationRequest, RecommendationResponse
@@ -23,8 +24,10 @@ logger = logging.getLogger(__name__)
 
 
 @router.post("", response_model=RecommendationResponse, status_code=status.HTTP_200_OK)
+@limiter.limit(_dynamic_limit)
 async def generate_recommendations(
-    request: RecommendationRequest,
+    request: Request,
+    body: RecommendationRequest,
     datasets: DatasetService = Depends(get_dataset_service),
     service: RecommendationService = Depends(get_recommendation_service),
     memory: MemoryService = Depends(get_memory_service),
@@ -38,7 +41,7 @@ async def generate_recommendations(
     """
     if all(
         v is None
-        for v in (request.anomalies, request.insights, request.forecast, request.query_results)
+        for v in (body.anomalies, body.insights, body.forecast, body.query_results)
     ):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -49,7 +52,7 @@ async def generate_recommendations(
         )
 
     try:
-        meta = datasets.get_metadata(request.dataset_id)
+        meta = datasets.get_metadata(body.dataset_id)
     except DatasetNotFoundError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
@@ -57,9 +60,9 @@ async def generate_recommendations(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Dataset not found.")
 
     try:
-        resp = await service.generate(request)
+        resp = await service.generate(body)
     except RecommendationError as exc:
-        logger.warning("Recommendation error for dataset %s: %s", request.dataset_id, exc)
+        logger.warning("Recommendation error for dataset %s: %s", body.dataset_id, exc)
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=str(exc),
@@ -77,7 +80,7 @@ async def generate_recommendations(
                 session_id=x_session_id,
                 user_sub=current_user.sub,
                 turn_type=TurnType.RECOMMENDATION,
-                dataset_id=request.dataset_id,
+                dataset_id=body.dataset_id,
                 recommendations={
                     "total_count": resp.total_count,
                     "summary": resp.summary,

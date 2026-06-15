@@ -229,7 +229,37 @@ function StepCard({
 // Session detail view
 // ---------------------------------------------------------------------------
 
-function TraceDetail({ sessionId }: { sessionId: string }) {
+function localSessionToInfo(
+  sessionId: string,
+  s: StoredSession
+): AgentSessionInfo {
+  const steps = s.completedSteps ?? [];
+  return {
+    session_id: sessionId,
+    status: s.status,
+    user_goal: s.goal,
+    current_step: steps.length,
+    total_steps: steps.length,
+    plan: steps.map((r) => ({
+      tool_name: r.tool_name,
+      arguments: {},
+      step_label: r.step_label,
+      requires_approval: false,
+    })),
+    completed_results: steps,
+    pending_approval: s.pendingApproval,
+    final_answer: s.finalAnswer,
+    error: s.error,
+  };
+}
+
+function TraceDetail({
+  sessionId,
+  localSession,
+}: {
+  sessionId: string;
+  localSession: StoredSession | null;
+}) {
   const { data, isLoading, isError, error } = useQuery<AgentSessionInfo>({
     queryKey: ["agent-session", sessionId],
     queryFn: () => getAgentSession(sessionId),
@@ -238,6 +268,11 @@ function TraceDetail({ sessionId }: { sessionId: string }) {
       return status === "running" || status === "suspended" ? 2000 : false;
     },
   });
+
+  // For completed sessions the backend may no longer hold the state (restart /
+  // MemorySaver). Fall back to what we already have in localStorage.
+  const resolved: AgentSessionInfo | null =
+    data ?? (isError && localSession ? localSessionToInfo(sessionId, localSession) : null);
 
   if (isLoading) {
     return (
@@ -248,7 +283,7 @@ function TraceDetail({ sessionId }: { sessionId: string }) {
     );
   }
 
-  if (isError || !data) {
+  if (!resolved) {
     const msg = (error as Error)?.message ?? "Session not found";
     return (
       <div className="flex flex-col items-center justify-center py-24 gap-3">
@@ -258,12 +293,14 @@ function TraceDetail({ sessionId }: { sessionId: string }) {
     );
   }
 
+  const info = resolved;
+
   const completedByIndex: Record<number, ToolResult> = {};
-  data.completed_results.forEach((r, i) => {
+  info.completed_results.forEach((r, i) => {
     completedByIndex[i] = r;
   });
 
-  const totalMs = data.completed_results.reduce((s, r) => s + r.duration_ms, 0);
+  const totalMs = info.completed_results.reduce((s, r) => s + r.duration_ms, 0);
 
   return (
     <div className="max-w-2xl mx-auto space-y-5 py-6">
@@ -272,51 +309,51 @@ function TraceDetail({ sessionId }: { sessionId: string }) {
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-2">
             <Bot className="h-4 w-4 text-primary shrink-0" />
-            <p className="text-sm font-semibold text-foreground">{data.user_goal}</p>
+            <p className="text-sm font-semibold text-foreground">{info.user_goal}</p>
           </div>
-          <StatusBadge status={data.status} />
+          <StatusBadge status={info.status} />
         </div>
         <div className="flex items-center gap-3 flex-wrap text-[11px] text-muted-foreground">
-          <span>{data.completed_results.length} / {data.total_steps} steps complete</span>
+          <span>{info.completed_results.length} / {info.total_steps} steps complete</span>
           {totalMs > 0 && <span>Total time: {(totalMs / 1000).toFixed(1)}s</span>}
           <span className="font-mono text-[10px] opacity-60">{sessionId.slice(0, 16)}…</span>
         </div>
       </div>
 
       {/* Final answer */}
-      {data.final_answer && (
+      {info.final_answer && (
         <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-emerald-600 mb-1.5">
             Final Answer
           </p>
           <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap">
-            {data.final_answer}
+            {info.final_answer}
           </p>
         </div>
       )}
 
       {/* Error */}
-      {data.error && data.status === "failed" && (
+      {info.error && info.status === "failed" && (
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 flex gap-2">
           <AlertCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-red-600">{data.error}</p>
+          <p className="text-sm text-red-600">{info.error}</p>
         </div>
       )}
 
       {/* Steps */}
-      {data.plan.length > 0 ? (
+      {info.plan.length > 0 ? (
         <div className="space-y-2">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">
-            Execution Plan · {data.plan.length} steps
+            Execution Plan · {info.plan.length} steps
           </p>
-          {data.plan.map((step, i) => (
+          {info.plan.map((step, i) => (
             <StepCard
               key={i}
               index={i}
               plan={step}
               result={completedByIndex[i]}
-              currentStep={data.current_step}
-              status={data.status}
+              currentStep={info.current_step}
+              status={info.status}
             />
           ))}
         </div>
@@ -333,7 +370,7 @@ function TraceDetail({ sessionId }: { sessionId: string }) {
 // Session selector (when no session_id in URL)
 // ---------------------------------------------------------------------------
 
-function SessionPicker({ onSelect }: { onSelect: (id: string) => void }) {
+function SessionPicker({ onSelect }: { onSelect: (id: string, local: StoredSession) => void }) {
   const [sessions, setSessions] = useState<StoredSession[]>([]);
 
   useEffect(() => {
@@ -373,7 +410,7 @@ function SessionPicker({ onSelect }: { onSelect: (id: string) => void }) {
         return (
         <button
           key={s.id}
-          onClick={() => backendId && onSelect(backendId)}
+          onClick={() => backendId && onSelect(backendId, s)}
           disabled={!backendId}
           className="w-full rounded-xl border bg-card hover:border-primary/40 hover:bg-primary/5 transition-colors p-4 text-left group disabled:opacity-40 disabled:cursor-not-allowed"
         >
@@ -413,10 +450,17 @@ export function AgentTraceWorkspace() {
   const searchParams = useSearchParams();
   const urlSessionId = searchParams.get("session_id");
   const [selectedId, setSelectedId] = useState<string | null>(urlSessionId);
+  const [selectedLocalSession, setSelectedLocalSession] = useState<StoredSession | null>(null);
 
   useEffect(() => {
     setSelectedId(urlSessionId);
+    setSelectedLocalSession(null);
   }, [urlSessionId]);
+
+  function handleSelectSession(backendId: string, local: StoredSession) {
+    setSelectedId(backendId);
+    setSelectedLocalSession(local);
+  }
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -450,7 +494,7 @@ export function AgentTraceWorkspace() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
             >
-              <TraceDetail sessionId={selectedId} />
+              <TraceDetail sessionId={selectedId} localSession={selectedLocalSession} />
             </motion.div>
           ) : (
             <motion.div
@@ -460,7 +504,7 @@ export function AgentTraceWorkspace() {
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.18 }}
             >
-              <SessionPicker onSelect={setSelectedId} />
+              <SessionPicker onSelect={handleSelectSession} />
             </motion.div>
           )}
         </AnimatePresence>

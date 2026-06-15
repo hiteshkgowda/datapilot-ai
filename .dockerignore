@@ -1,0 +1,55 @@
+# ── Secrets — never bake into image layers ────────────────────────────────────
+.env
+.env.*
+*.env
+
+# ── Version control ───────────────────────────────────────────────────────────
+.git
+.gitignore
+
+# ── Frontend sources (not needed in the backend image) ───────────────────────
+frontend-next/
+frontend/
+
+# ── Python build artifacts ────────────────────────────────────────────────────
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+venv/
+env/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# ── Runtime storage (populated at runtime, not from source) ──────────────────
+uploads/
+reports/
+connections/
+crud_audit/
+crud_rollback/
+agent_sessions/
+database/
+agents/
+backend/uploads/
+backend/reports/
+backend/connections/
+backend/crud_audit/
+backend/crud_rollback/
+backend/agent_sessions/
+backend/dashboards/
+backend/memory_store/
+backend/roles/
+backend/saved_queries/
+backend/scheduled_reports/
+
+# ── Documentation ─────────────────────────────────────────────────────────────
+*.md
+docs/
+
+# ── IDE / OS ──────────────────────────────────────────────────────────────────
+.DS_Store
+.idea/
+.vscode/

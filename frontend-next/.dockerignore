@@ -1,0 +1,19 @@
+# ── Secrets ───────────────────────────────────────────────────────────────────
+.env
+.env.local
+.env.*
+
+# ── Dependencies (reinstalled inside the image) ───────────────────────────────
+node_modules/
+
+# ── Build output (generated inside the image) ────────────────────────────────
+.next/
+out/
+tsconfig.tsbuildinfo
+
+# ── Version control / IDE ─────────────────────────────────────────────────────
+.git
+.gitignore
+.DS_Store
+.idea/
+.vscode/

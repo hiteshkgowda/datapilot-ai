@@ -1,0 +1,52 @@
+services:
+
+  # ── Backend: FastAPI + LangGraph agent ──────────────────────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "${API_PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      # Keep all user-generated files on the named volume, not in the container layer.
+      STORAGE_BASE_DIR: /data
+      # Allow the frontend container (and local browser) to reach the API.
+      FRONTEND_URL: "http://localhost:3000"
+    volumes:
+      - backend_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ── Frontend: Next.js ────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend-next
+      dockerfile: Dockerfile
+      args:
+        # Baked into the JS bundle at build time — must be the URL the
+        # *browser* uses to reach the backend (localhost since port is exposed).
+        NEXT_PUBLIC_BACKEND_URL: "http://localhost:8000"
+    ports:
+      - "3000:3000"
+    environment:
+      # Runtime vars — read by the Next.js server process at startup.
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXT_PUBLIC_BACKEND_URL: "http://localhost:8000"
+      # Secrets — sourced from .env (see .env.example for how to set these).
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET}"
+      BACKEND_JWT_SECRET: "${BACKEND_JWT_SECRET}"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  # Persists uploads, reports, agent sessions, dashboards, etc. across restarts.
+  backend_data:

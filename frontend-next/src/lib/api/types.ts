@@ -503,11 +503,22 @@ export interface InsightRequest {
   table_data?: Record<string, unknown>[];
 }
 
+export interface InsightPerformer {
+  label?: string;
+  name?: string;
+  value?: number | string;
+  score?: number | string;
+  metric?: string;
+  [key: string]: unknown;
+}
+
 export interface InsightResponse {
   summary: string;
   key_insights: string[];
   trends: string[];
   recommendations: string[];
+  top_performers: InsightPerformer[];
+  underperformers: InsightPerformer[];
   cache_hit: boolean;
   generation_time_ms: number;
 }

@@ -87,7 +87,7 @@ export function ScheduleForm({ datasets, editing, onDone }: Props) {
         >
           <option value="">Select a dataset…</option>
           {datasets.map((d) => (
-            <option key={d.dataset_id} value={d.dataset_id}>
+            <option key={d.id} value={d.id}>
               {d.filename}
             </option>
           ))}

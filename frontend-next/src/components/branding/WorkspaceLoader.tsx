@@ -31,20 +31,20 @@ const E_DIM     = "rgba(52,211,153,0.18)";
 
 // Startup sequence steps with completion timestamps (ms)
 const STARTUP_STEPS = [
-  { label: "Workspace authenticated",    completeAt: 250  },
-  { label: "User profile loaded",        completeAt: 460  },
-  { label: "Analytics engine online",    completeAt: 640  },
-  { label: "Forecasting engine online",  completeAt: 820  },
-  { label: "Insight generation ready",   completeAt: 980  },
-  { label: "Root cause analysis ready",  completeAt: 1130 },
-  { label: "Recommendation engine ready",completeAt: 1270 },
-  { label: "Executive reporting ready",  completeAt: 1400 },
-  { label: "Agent orchestration online", completeAt: 1520 },
+  { label: "Workspace authenticated",    completeAt: 500  },
+  { label: "User profile loaded",        completeAt: 920  },
+  { label: "Analytics engine online",    completeAt: 1300 },
+  { label: "Forecasting engine online",  completeAt: 1660 },
+  { label: "Insight generation ready",   completeAt: 1990 },
+  { label: "Root cause analysis ready",  completeAt: 2290 },
+  { label: "Recommendation engine ready",completeAt: 2570 },
+  { label: "Executive reporting ready",  completeAt: 2820 },
+  { label: "Agent orchestration online", completeAt: 3050 },
 ] as const;
 
-const REDIRECT_AT  = 2620;  // ms
-const READY_AT     = 1620;  // ms after last step
-const EXITING_AT   = 2300;  // ms
+const READY_AT    = 3300;  // ms — "Workspace Ready" appears
+const EXITING_AT  = 4650;  // ms — fade-to-dark overlay starts
+// router.replace fires via onAnimationComplete ~300ms after EXITING_AT ≈ 5000ms
 
 // System status cards
 const SYSTEM_SERVICES = [
@@ -68,10 +68,10 @@ const AGENT_NODES = [
 
 // Platform metrics (demo values)
 const PLATFORM_METRICS = [
-  { label: "Insights Generated", target: 12482, startAt: 300,  duration: 1400 },
-  { label: "Forecasts Produced", target: 3917,  startAt: 450,  duration: 1300 },
-  { label: "Reports Created",    target: 5201,  startAt: 600,  duration: 1200 },
-  { label: "Queries Executed",   target: 87442, startAt: 200,  duration: 1500 },
+  { label: "Insights Generated", target: 12482, startAt: 500,  duration: 2400 },
+  { label: "Forecasts Produced", target: 3917,  startAt: 700,  duration: 2200 },
+  { label: "Reports Created",    target: 5201,  startAt: 900,  duration: 2000 },
+  { label: "Queries Executed",   target: 87442, startAt: 350,  duration: 2600 },
 ] as const;
 
 // Hardcoded particle positions (avoids SSR randomness)
